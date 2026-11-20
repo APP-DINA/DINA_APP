@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Paleta Duoc UC solo para recursos XML. -->
+    <color name="duoc_negro">#FF1A1A1A</color>
+    <color name="duoc_blanco">#FFFFFFFF</color>
+    <color name="duoc_amarillo">#FFFFB800</color>
 </resources>

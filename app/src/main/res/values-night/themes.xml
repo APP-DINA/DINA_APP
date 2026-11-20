@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la ventana mientras Compose arranca (tema oscuro) -->
+    <style name="Theme.DINA" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/duoc_negro</item>
+    </style>
+</resources>
