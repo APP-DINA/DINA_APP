@@ -20,6 +20,12 @@ val Lato = FontFamily(
 )
 
 val Typography = Typography(
+    displayLarge = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 57.sp, lineHeight = 64.sp),
+    displayMedium = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 45.sp, lineHeight = 52.sp),
+    headlineSmall = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+    titleSmall = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),
+    labelSmall = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 16.sp),
+
     // h1 - Título principal
     displaySmall = TextStyle(fontFamily = Lato, fontWeight = FontWeight.Bold, fontSize = 43.sp, lineHeight = 52.sp),
     // h2 - Subtítulos y textos grandes

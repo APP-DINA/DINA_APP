@@ -21,9 +21,9 @@ enum class ModoTema { SISTEMA, CLARO, OSCURO }
 private val DarkColorScheme = darkColorScheme(
     primary = DuocAmarillo,
     onPrimary = DuocNegro,
-    primaryContainer = AmarilloOscuro,
-    onPrimaryContainer = AmarilloClaro,
-    inversePrimary = AmarilloOscuro,
+    primaryContainer = DuocAmarillo,
+    onPrimaryContainer = DuocNegro,
+    inversePrimary = DuocNegro,
 
     secondary = GrisClaro,
     onSecondary = DuocNegro,
@@ -59,9 +59,9 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = DuocAmarillo,
-    onPrimary = DuocNegro,
-    primaryContainer = AmarilloClaro,
+    primary = DuocNegro,
+    onPrimary = DuocBlanco,
+    primaryContainer = DuocAmarillo,
     onPrimaryContainer = DuocNegro,
     inversePrimary = DuocAmarillo,
 
@@ -81,7 +81,7 @@ private val LightColorScheme = lightColorScheme(
     onSurface = DuocNegro,
     surfaceVariant = DuocTerciario,
     onSurfaceVariant = DuocGris,
-    surfaceTint = DuocAmarillo,
+    surfaceTint = DuocGris,
     inverseSurface = DuocNegro,
     inverseOnSurface = DuocBlanco,
 
