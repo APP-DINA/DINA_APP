@@ -8,6 +8,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -199,8 +203,20 @@ private fun Perfil(usuario: Usuario, subiendoFoto: Boolean, onFotoClick: () -> U
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        // "Pop" al entrar al Menú: la foto crece con un pequeño rebote
+        val escala = remember { Animatable(ESCALA_INICIAL_POP) }
+        LaunchedEffect(Unit) {
+            escala.animateTo(
+                1f,
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+            )
+        }
         Box(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = escala.value
+                    scaleY = escala.value
+                }
                 .semantics { contentDescription = "Foto de perfil. Toca para cambiarla" }
                 .clickable(enabled = !subiendoFoto, role = Role.Button, onClick = onFotoClick)
         ) {
@@ -244,6 +260,9 @@ private fun Perfil(usuario: Usuario, subiendoFoto: Boolean, onFotoClick: () -> U
         )
     }
 }
+
+/** Tamaño de la foto al empezar el "pop" (1 = tamaño normal). */
+private const val ESCALA_INICIAL_POP = 0.6f
 
 // ── Opciones ────────────────────────────────────────────────────────────────
 
