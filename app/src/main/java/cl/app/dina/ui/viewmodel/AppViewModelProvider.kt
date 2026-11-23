@@ -38,7 +38,8 @@ object AppViewModelProvider {
             ReservaEspacio2ViewModel(
                 savedStateHandle = createSavedStateHandle(),
                 espacioRepository = dinaApplication().container.espacioRepository,
-                solicitudRepository = dinaApplication().container.solicitudRepository
+                solicitudRepository = dinaApplication().container.solicitudRepository,
+                feriadoRepository = dinaApplication().container.feriadoRepository
             )
         }
         initializer {
