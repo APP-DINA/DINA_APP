@@ -8,6 +8,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+/** dina_backend publicado en AWS EC2 (Elastic IP de la instancia DINA_BACKEND). */
+val URL_BACKEND_AWS = "http://34.201.191.7:8080/"
+
 android {
     namespace = "cl.app.dina"
     compileSdk {
@@ -35,13 +38,14 @@ android {
             manifestPlaceholders["permitirHttp"] = "true"
         }
         // Igual que debug, pero contra el backend publicado en AWS EC2 (Elastic IP). Se instala aparte
-        // ("DINA AWS", id cl.app.dina.aws), así conviven en el teléfono con la versión local.
-        // En Android Studio: Build > Select Build Variant > aws.
+        // ("DINA", id cl.app.dina.aws), así convive en el teléfono con la de pruebas ("DINA P").
+        // Es la variante por defecto al abrir el proyecto (Build > Select Build Variant para cambiarla).
         create("aws") {
             initWith(getByName("debug"))
+            isDefault = true
             applicationIdSuffix = ".aws"
             versionNameSuffix = "-aws"
-            buildConfigField("String", "API_BASE_URL", "\"http://34.201.191.7:8080/\"")
+            buildConfigField("String", "API_BASE_URL", "\"$URL_BACKEND_AWS\"")
             // EC2 todavía no tiene HTTPS
             manifestPlaceholders["permitirHttp"] = "true"
             // Las librerías sin variante "aws" usan la de debug
@@ -51,9 +55,9 @@ android {
             optimization {
                 enable = false
             }
-            // TODO: URL del backend publicado (EC2), idealmente con HTTPS
-            buildConfigField("String", "API_BASE_URL", "\"http://127.0.0.1:8080/\"")
-            manifestPlaceholders["permitirHttp"] = "false"
+            // Backend publicado en AWS EC2 (sin HTTPS por ahora, por eso se permite HTTP)
+            buildConfigField("String", "API_BASE_URL", "\"$URL_BACKEND_AWS\"")
+            manifestPlaceholders["permitirHttp"] = "true"
         }
     }
     compileOptions {

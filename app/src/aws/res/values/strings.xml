@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Nombre en el teléfono para distinguirla de la versión local (debug) -->
-    <string name="app_name">DINA AWS</string>
-</resources>
