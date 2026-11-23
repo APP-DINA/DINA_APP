@@ -17,10 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -47,6 +43,7 @@ import cl.app.dina.data.model.EstadoBloque
 import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.ui.components.BotonPrincipal
 import cl.app.dina.ui.components.CargandoView
+import cl.app.dina.ui.components.EncabezadoVolver
 import cl.app.dina.ui.components.EspacioCard
 import cl.app.dina.ui.components.MensajeView
 import cl.app.dina.ui.components.SelectorDia
@@ -128,7 +125,7 @@ private fun ReservaEspacio2Contenido(
             .imePadding()
             .verticalScroll(rememberScrollState())
     ) {
-        Encabezado(acciones.onVolver)
+        EncabezadoVolver("Solicitar espacio", acciones.onVolver, descripcionVolver = "Volver a Reserva de Espacio")
 
         val espacio = state.espacio
         when {
@@ -146,30 +143,6 @@ private fun ReservaEspacio2Contenido(
                 Formulario(state, espacio, acciones)
             }
         }
-    }
-}
-
-// ── Encabezado: "<  Solicitar espacio" ──────────────────────────────────────
-
-@Composable
-private fun Encabezado(onVolver: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
-    ) {
-        IconButton(onClick = onVolver) {
-            Icon(
-                Icons.Filled.ArrowBackIosNew,
-                contentDescription = "Volver a Reserva de Espacio",
-                tint = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Text(
-            "Solicitar espacio",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground
-        )
     }
 }
 

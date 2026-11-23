@@ -4,26 +4,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Botón de la acción principal de un formulario (Ingresar, Solicitar ...).
+ * Botón de la acción principal (Ingresar, Solicitar, Aceptar…), a todo el ancho disponible.
+ * Mientras [cargando] queda deshabilitado y muestra un indicador en vez del texto.
+ * [colores] permite, por ejemplo, el rojo de "Rechazar" y el verde de "Aceptar".
  */
 @Composable
 fun BotonPrincipal(
     texto: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    cargando: Boolean = false
+    cargando: Boolean = false,
+    habilitado: Boolean = true,
+    colores: ButtonColors = ButtonDefaults.buttonColors()
 ) {
     Button(
         onClick = onClick,
-        enabled = !cargando,
+        enabled = habilitado && !cargando,
+        colors = colores,
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp)
@@ -32,7 +39,7 @@ fun BotonPrincipal(
             CircularProgressIndicator(
                 modifier = Modifier.size(22.dp),
                 strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onPrimary
+                color = LocalContentColor.current
             )
         } else {
             Text(texto)

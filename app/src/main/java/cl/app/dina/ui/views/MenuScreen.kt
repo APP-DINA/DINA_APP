@@ -98,7 +98,7 @@ private fun MenuContenido(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        if (usuario.esAdmin) "${usuario.rol.etiqueta} · Administrador" else usuario.rol.etiqueta,
+                        usuario.descripcionRol,
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )

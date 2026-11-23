@@ -1,11 +1,10 @@
 package cl.app.dina.data.repository
 
-import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Usuario
 import cl.app.dina.data.remote.DinaApi
 import cl.app.dina.data.remote.aMensaje
 import cl.app.dina.data.remote.dto.LoginRequestDto
-import cl.app.dina.data.remote.dto.UsuarioDto
+import cl.app.dina.data.remote.dto.aModelo
 import kotlinx.coroutines.CancellationException
 
 /** Autenticación real contra dina_backend (POST /api/auth/login, /me, /logout). */
@@ -43,10 +42,4 @@ class RemoteAuthRepository(private val api: DinaApi) : AuthRepository {
     } catch (_: Exception) {
         null // un 401 ya lo maneja AuthTokenInterceptor cerrando la sesión
     }
-}
-
-/** DTO del backend → modelo de la app. El tipo de cuenta sale del dominio; el permiso, del backend. */
-private fun UsuarioDto.aModelo(): Usuario? {
-    val tipoCuenta = Rol.desdeCorreo(correo) ?: return null
-    return Usuario(correo = correo, nombre = nombre, rol = tipoCuenta, esAdmin = rol == "ADMIN")
 }

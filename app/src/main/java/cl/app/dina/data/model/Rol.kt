@@ -11,7 +11,7 @@ package cl.app.dina.data.model
  */
 enum class Rol(val etiqueta: String, val dominios: List<String>) {
     ESTUDIANTE("Estudiante", listOf("duocuc.cl")),
-    PROFESOR("Profesor", listOf("profesor.duoc.cl"));
+    PROFESOR("Docente", listOf("profesor.duoc.cl"));
 
     companion object {
         /** Todos los dominios aceptados, para mostrarlos en mensajes de error. */

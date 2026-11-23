@@ -1,9 +1,11 @@
 package cl.app.dina.data.repository
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Usuario
@@ -17,14 +19,16 @@ import kotlinx.coroutines.flow.map
 class SesionRepository(private val dataStore: DataStore<Preferences>) {
 
     private object Claves {
+        val ID = longPreferencesKey("id")
         val CORREO = stringPreferencesKey("correo")
         val NOMBRE = stringPreferencesKey("nombre")
         val ROL = stringPreferencesKey("rol")
         val TOKEN = stringPreferencesKey("token")
         val ADMIN = booleanPreferencesKey("admin")
+        val FOTO = stringPreferencesKey("foto")
     }
 
-    /** Usuario con sesión, o null si no hay. Se re-emite al iniciar o cerrar sesión. */
+    /** Usuario con sesión, o null si no hay. Se re-emite al iniciar o cerrar sesión, o al cambiar la foto. */
     val usuario: Flow<Usuario?> = dataStore.data.map { prefs ->
         val correo = prefs[Claves.CORREO] ?: return@map null
         val nombre = prefs[Claves.NOMBRE] ?: return@map null
@@ -33,7 +37,14 @@ class SesionRepository(private val dataStore: DataStore<Preferences>) {
         // Si el rol guardado ya no existe (p. ej. se renombró), se trata como sin sesión
         val rol = prefs[Claves.ROL]?.let { r -> Rol.entries.firstOrNull { it.name == r } }
             ?: return@map null
-        Usuario(correo = correo, nombre = nombre, rol = rol, esAdmin = prefs[Claves.ADMIN] ?: false)
+        Usuario(
+            correo = correo,
+            nombre = nombre,
+            rol = rol,
+            esAdmin = prefs[Claves.ADMIN] ?: false,
+            id = prefs[Claves.ID] ?: 0,
+            fotoUrl = prefs[Claves.FOTO]
+        )
     }
 
     /** Token para las peticiones al backend (lo agrega AuthTokenInterceptor). */
@@ -42,24 +53,29 @@ class SesionRepository(private val dataStore: DataStore<Preferences>) {
     suspend fun iniciar(usuario: Usuario, token: String) {
         dataStore.edit { prefs ->
             prefs[Claves.CORREO] = usuario.correo
-            prefs[Claves.NOMBRE] = usuario.nombre
-            prefs[Claves.ROL] = usuario.rol.name
             prefs[Claves.TOKEN] = token
-            prefs[Claves.ADMIN] = usuario.esAdmin
+            prefs.guardar(usuario)
         }
     }
 
-    /** Actualiza nombre y permisos (p. ej. si el backend cambió el rol), manteniendo el token. */
+    /** Actualiza nombre, permisos y foto (p. ej. si el backend cambió el rol), manteniendo el token. */
     suspend fun actualizarUsuario(usuario: Usuario) {
         dataStore.edit { prefs ->
             if (prefs[Claves.TOKEN].isNullOrBlank()) return@edit // se cerró la sesión mientras tanto
-            prefs[Claves.NOMBRE] = usuario.nombre
-            prefs[Claves.ROL] = usuario.rol.name
-            prefs[Claves.ADMIN] = usuario.esAdmin
+            prefs.guardar(usuario)
         }
     }
 
     suspend fun cerrar() {
         dataStore.edit { it.clear() }
+    }
+
+    /** Datos que pueden cambiar durante la sesión (el correo y el token no). */
+    private fun MutablePreferences.guardar(usuario: Usuario) {
+        this[Claves.ID] = usuario.id
+        this[Claves.NOMBRE] = usuario.nombre
+        this[Claves.ROL] = usuario.rol.name
+        this[Claves.ADMIN] = usuario.esAdmin
+        usuario.fotoUrl?.let { this[Claves.FOTO] = it } ?: remove(Claves.FOTO)
     }
 }

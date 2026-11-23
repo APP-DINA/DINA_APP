@@ -26,12 +26,25 @@ object AppViewModelProvider {
             )
         }
         initializer {
+            InicioViewModel(
+                sesionRepository = dinaApplication().container.sesionRepository,
+                solicitudRepository = dinaApplication().container.solicitudRepository
+            )
+        }
+        initializer {
             ReservaEspacioViewModel(dinaApplication().container.espacioRepository)
         }
         initializer {
             ReservaEspacio2ViewModel(
                 savedStateHandle = createSavedStateHandle(),
                 espacioRepository = dinaApplication().container.espacioRepository,
+                solicitudRepository = dinaApplication().container.solicitudRepository
+            )
+        }
+        initializer {
+            SolicitudViewModel(
+                savedStateHandle = createSavedStateHandle(),
+                sesionRepository = dinaApplication().container.sesionRepository,
                 solicitudRepository = dinaApplication().container.solicitudRepository
             )
         }

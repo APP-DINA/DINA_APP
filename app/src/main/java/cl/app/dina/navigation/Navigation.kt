@@ -28,9 +28,11 @@ import cl.app.dina.ui.views.MenuScreen
 import cl.app.dina.ui.views.NotificacionesScreen
 import cl.app.dina.ui.views.ReservaEspacio2Screen
 import cl.app.dina.ui.views.ReservaEspacioScreen
+import cl.app.dina.ui.views.SolicitudScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import cl.app.dina.ui.viewmodel.ReservaEspacio2ViewModel
+import cl.app.dina.ui.viewmodel.SolicitudViewModel
 import java.time.LocalDate
 
 /**
@@ -65,23 +67,28 @@ fun AppNavigation() {
 
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
-    // El formulario de reserva pertenece a la pestaña "Reservar": se mantiene marcada
-    val pestaniaActual = if (rutaActual == RUTA_RESERVA_ESPACIO_2) Pestania.RESERVA_ESPACIO
-    else Pestania.entries.firstOrNull { it.ruta == rutaActual }
+    // Las pantallas secundarias mantienen marcada la pestaña de la que salen
+    val pestaniaActual = when (rutaActual) {
+        RUTA_RESERVA_ESPACIO_2 -> Pestania.RESERVA_ESPACIO
+        RUTA_SOLICITUD -> Pestania.INICIO
+        else -> Pestania.entries.firstOrNull { it.ruta == rutaActual }
+    }
+
+    val irAPestania: (Pestania) -> Unit = { pestania ->
+        navController.navigate(pestania.ruta) {
+            // Volver a Inicio sin apilar pestañas al nivel de TabBar - "atrás" te lleva a InicioScreen
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true   // tocar la pestaña actual no la duplica
+            restoreState = true      // cada pestaña recuerda su estado
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             TabBar(
                 pestaniaActual = pestaniaActual,
-                onPestaniaClick = { pestania ->
-                    navController.navigate(pestania.ruta) {
-                        // Volver a Inicio sin apilar pestañas al nivel de TabBar - "atrás" te lleva a InicioScreen
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true   // tocar la pestaña actual no la duplica
-                        restoreState = true      // cada pestaña recuerda su estado
-                    }
-                }
+                onPestaniaClick = irAPestania
             )
         }
     ) { innerPadding ->
@@ -90,7 +97,22 @@ fun AppNavigation() {
             startDestination = Pestania.INICIO.ruta,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Pestania.INICIO.ruta) { InicioScreen() }
+            composable(Pestania.INICIO.ruta) {
+                InicioScreen(
+                    onSolicitudClick = { id -> navController.navigate(rutaSolicitud(id)) },
+                    onReservar = { irAPestania(Pestania.RESERVA_ESPACIO) }
+                )
+            }
+            composable(
+                route = RUTA_SOLICITUD,
+                arguments = listOf(navArgument(SolicitudViewModel.ARG_SOLICITUD_ID) { type = NavType.LongType })
+            ) {
+                SolicitudScreen(
+                    onVolver = { navController.popBackStack() },
+                    // El chat todavía es una pestaña provisoria
+                    onAbrirChat = { irAPestania(Pestania.CHAT) }
+                )
+            }
             composable(Pestania.RESERVA_ESPACIO.ruta) {
                 ReservaEspacioScreen(
                     onEspacioClick = { espacio, fecha ->
@@ -119,3 +141,8 @@ private const val RUTA_RESERVA_ESPACIO_2 =
     "reserva_espacio_2/{${ReservaEspacio2ViewModel.ARG_ESPACIO_ID}}/{${ReservaEspacio2ViewModel.ARG_FECHA}}"
 
 private fun rutaReservaEspacio2(espacioId: Long, fecha: LocalDate) = "reserva_espacio_2/$espacioId/$fecha"
+
+/** Detalle de una solicitud (se abre desde el Inicio del usuario y del administrador). */
+private const val RUTA_SOLICITUD = "solicitud/{${SolicitudViewModel.ARG_SOLICITUD_ID}}"
+
+private fun rutaSolicitud(solicitudId: Long) = "solicitud/$solicitudId"

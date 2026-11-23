@@ -23,7 +23,9 @@ data class UsuarioDto(
     @SerializedName("correo") val correo: String,
     @SerializedName("nombre") val nombre: String,
     /** "ADMIN" o "USUARIO" */
-    @SerializedName("rol") val rol: String
+    @SerializedName("rol") val rol: String,
+    /** Ruta relativa ("api/usuarios/5/foto?v=…") o null si no tiene foto. */
+    @SerializedName("fotoUrl") val fotoUrl: String?
 )
 
 /** Forma de todos los errores del backend: { estado, error, mensaje, fecha } */

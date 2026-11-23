@@ -54,5 +54,7 @@ val SaludSecundario = Color(0xFF99D6EA)
 val TurismoPrincipal = Color(0xFF00A499)
 val TurismoSecundario = Color(0xFF2AD2C9)
 
-// Acciones de salida o cancelación (botón rojo de volver). Rojo fijo: el "error" de Material 3
+// Botones de decisión (Rechazar / Aceptar una solicitud). Colores fijos en ambos temas:
+// el "error" de Material 3 es rosado en el tema oscuro y no se lee como "rechazar".
 val RojoAccion = Color(0xFFD32F2F)
+val VerdeAccion = Color(0xFF2E7D32)

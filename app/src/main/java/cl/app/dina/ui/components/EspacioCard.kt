@@ -65,17 +65,69 @@ fun EspacioCard(espacio: Espacio, onClick: (() -> Unit)?, modifier: Modifier = M
     val descripcion = buildString {
         append(espacio.titulo).append(", ").append(espacio.tipo.etiqueta)
         append(", ").append(espacio.edificioNombre).append(", piso ").append(espacio.piso)
-        append(", capacidad ").append(espacio.capacidad).append(" personas")
+        append(", capacidad ").append(personas(espacio.capacidad))
         escuela?.let { append(", escuela ").append(it.nombre) }
     }
 
+    TarjetaConBanda(banda = banda, descripcion = descripcion, onClick = onClick, modifier = modifier) {
+        Text(
+            "${espacio.edificioNombre} · Piso ${espacio.piso}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            espacio.titulo,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Dato(Icons.Outlined.Category, espacio.tipo.etiqueta)
+            Dato(Icons.Outlined.Groups, personas(espacio.capacidad))
+        }
+        if (escuela != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(8.dp)
+                        .background(banda, CircleShape)
+                )
+                Text(
+                    escuela.nombre,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta con una banda de color a la izquierda (la comparten EspacioCard y SolicitudCard).
+ * Con [onClick] se puede tocar y muestra una flecha a la derecha; con null es solo informativa.
+ * [descripcion] es lo que lee TalkBack de toda la tarjeta.
+ */
+@Composable
+fun TarjetaConBanda(
+    banda: Color,
+    descripcion: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    contenido: @Composable ColumnScope.() -> Unit
+) {
     val colores = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     val modificador = modifier
         .fillMaxWidth()
         .semantics(mergeDescendants = true) { contentDescription = descripcion }
-    val contenido: @Composable ColumnScope.() -> Unit = {
+    val interior: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.height(IntrinsicSize.Min)) {
-            // Banda de la escuela
             Box(
                 Modifier
                     .width(6.dp)
@@ -88,44 +140,7 @@ fun EspacioCard(espacio: Espacio, onClick: (() -> Unit)?, modifier: Modifier = M
                     .padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "${espacio.edificioNombre} · Piso ${espacio.piso}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        espacio.titulo,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Dato(Icons.Outlined.Category, espacio.tipo.etiqueta)
-                        Dato(Icons.Outlined.Groups, "${espacio.capacidad} personas")
-                    }
-                    if (escuela != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier
-                                    .size(8.dp)
-                                    .background(banda, CircleShape)
-                            )
-                            Text(
-                                escuela.nombre,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 6.dp)
-                            )
-                        }
-                    }
-                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp), content = contenido)
                 if (onClick != null) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -137,18 +152,24 @@ fun EspacioCard(espacio: Espacio, onClick: (() -> Unit)?, modifier: Modifier = M
         }
     }
 
-    if (onClick != null) Card(onClick = onClick, colors = colores, modifier = modificador, content = contenido)
-    else Card(colors = colores, modifier = modificador, content = contenido)
+    if (onClick != null) Card(onClick = onClick, colors = colores, modifier = modificador, content = interior)
+    else Card(colors = colores, modifier = modificador, content = interior)
 }
 
+/** "1 persona", "35 personas". */
+fun personas(cantidad: Int): String = if (cantidad == 1) "1 persona" else "$cantidad personas"
+
+/** Ícono pequeño + texto ("👥 35 personas"). */
 @Composable
-private fun Dato(icono: ImageVector, texto: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+fun Dato(icono: ImageVector, texto: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
         Text(
             texto,
             style = MaterialTheme.typography.bodyMedium,
             color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 4.dp)
         )
     }

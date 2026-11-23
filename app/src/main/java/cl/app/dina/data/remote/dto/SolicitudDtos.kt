@@ -31,12 +31,26 @@ data class CrearSolicitudDto(
     @SerializedName("asistentes") val asistentes: Int
 )
 
-/** Respuesta de POST /api/solicitudes (solo los campos que usa la app). */
+/** Una solicitud (respuesta de POST /api/solicitudes y de GET /api/admin/solicitudes). */
 data class SolicitudDto(
     @SerializedName("id") val id: Long,
+    @SerializedName("espacio") val espacio: EspacioDto,
     @SerializedName("fecha") val fecha: String,
     @SerializedName("horaInicio") val horaInicio: String,
     @SerializedName("horaFin") val horaFin: String,
+    /** Motivo de la reserva. */
+    @SerializedName("actividad") val actividad: String,
+    @SerializedName("asistentes") val asistentes: Int,
     /** PENDIENTE, APROBADA, RECHAZADA o CANCELADA */
-    @SerializedName("estado") val estado: String
+    @SerializedName("estado") val estado: String,
+    /** Lo que escribió el administrador al aprobar o rechazar (puede venir vacío). */
+    @SerializedName("comentarioAdmin") val comentarioAdmin: String?,
+    @SerializedName("solicitante") val solicitante: UsuarioDto,
+    /** Cuándo se pidió: "2026-11-23T10:15:30.123" */
+    @SerializedName("creadaEn") val creadaEn: String?
+)
+
+/** Cuerpo de PATCH /api/admin/solicitudes/{id}/rechazar (el motivo es opcional). */
+data class RechazarDto(
+    @SerializedName("motivo") val motivo: String?
 )

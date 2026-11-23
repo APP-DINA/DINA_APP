@@ -1,9 +1,8 @@
 package cl.app.dina.data.repository
 
 import cl.app.dina.data.model.Espacio
-import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.data.remote.DinaApi
-import cl.app.dina.data.remote.dto.EspacioDto
+import cl.app.dina.data.remote.dto.aModelo
 
 /** Catálogo de espacios reservables. */
 interface EspacioRepository {
@@ -30,18 +29,3 @@ class RemoteEspacioRepository(private val api: DinaApi) : EspacioRepository {
         (catalogo ?: obtenerEspacios()).firstOrNull { it.id == id }
             ?: throw NoSuchElementException("El espacio ya no está disponible")
 }
-
-private fun EspacioDto.aModelo() = Espacio(
-    id = id,
-    codigo = codigo,
-    nombre = nombre,
-    edificio = edificio,
-    edificioNombre = edificioNombre,
-    piso = piso,
-    tipo = TipoEspacio.desde(tipo),
-    capacidad = capacidad,
-    escuela = escuela,
-    proyector = proyector,
-    computadores = computadores,
-    climatizacion = climatizacion
-)

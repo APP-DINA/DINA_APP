@@ -15,8 +15,12 @@ import retrofit2.converter.gson.GsonConverterFactory
 /** Crea el cliente HTTP una sola vez (lo llama AppContainer). */
 object RetrofitClient {
 
-    fun crear(sesionRepository: SesionRepository): DinaApi {
-        val okHttp = OkHttpClient.Builder()
+    /**
+     * Cliente con el token de sesión. Lo comparten Retrofit y Coil (fotos de perfil),
+     * porque las fotos también exigen sesión.
+     */
+    fun crearOkHttp(sesionRepository: SesionRepository): OkHttpClient =
+        OkHttpClient.Builder()
             .addInterceptor(AuthTokenInterceptor(sesionRepository))
             .addInterceptor(HttpLoggingInterceptor().apply {
                 // BASIC: método, URL, código y tiempo. No registra cuerpos (contraseñas) ni headers (token).
@@ -28,13 +32,13 @@ object RetrofitClient {
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
-        return Retrofit.Builder()
+    fun crear(okHttp: OkHttpClient): DinaApi =
+        Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttp)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(DinaApi::class.java)
-    }
 }
 
 /** Convierte un error de red o del backend en un mensaje para mostrar al usuario. */
