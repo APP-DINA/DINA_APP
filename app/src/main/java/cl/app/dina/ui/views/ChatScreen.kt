@@ -114,12 +114,17 @@ private fun ChatContenido(state: ChatUiState, acciones: ChatAcciones, modifier: 
         )
         PrimaryTabRow(selectedTabIndex = state.pestania.ordinal) {
             PestaniaChat.entries.forEach { pestania ->
-                // Solo "Abiertos" muestra cuántos hay (los cerrados solo se acumulan)
-                val conCantidad = pestania == PestaniaChat.ABIERTOS && state.carga == EstadoCarga.Listo
+                // Abiertos y Aceptados muestran cuántos hay (los cerrados solo se acumulan)
+                val conCantidad = pestania != PestaniaChat.CERRADOS && state.carga == EstadoCarga.Listo
                 Tab(
                     selected = pestania == state.pestania,
                     onClick = { acciones.onPestaniaChange(pestania) },
-                    text = { Text(if (conCantidad) "${pestania.etiqueta} · ${state.abiertos.size}" else pestania.etiqueta) }
+                    text = {
+                        Text(
+                            if (conCantidad) "${pestania.etiqueta} · ${state.de(pestania).size}" else pestania.etiqueta,
+                            maxLines = 1
+                        )
+                    }
                 )
             }
         }
@@ -158,12 +163,17 @@ private fun ChatContenido(state: ChatUiState, acciones: ChatAcciones, modifier: 
 @Composable
 private fun SinChats(pestania: PestaniaChat, esAdmin: Boolean) {
     MensajeView(
-        titulo = if (pestania == PestaniaChat.ABIERTOS) "No hay chats abiertos" else "No hay chats cerrados",
-        detalle = when {
-            pestania == PestaniaChat.CERRADOS ->
-                "Aquí quedan los chats de reservas que ya terminaron o que el administrador cerró."
-            esAdmin -> "Cada solicitud que aceptes tendrá su chat con quien la pidió."
-            else -> "Cuando el administrador acepte una de tus solicitudes, podrán conversar aquí."
+        titulo = when (pestania) {
+            PestaniaChat.ABIERTOS -> "No hay conversaciones abiertas"
+            PestaniaChat.ACEPTADOS -> "No hay chats sin usar"
+            PestaniaChat.CERRADOS -> "No hay chats cerrados"
+        },
+        detalle = when (pestania) {
+            PestaniaChat.ABIERTOS -> "Cuando alguien escriba en el chat de una solicitud aceptada, la conversación aparecerá aquí."
+            PestaniaChat.ACEPTADOS ->
+                if (esAdmin) "Cada solicitud que aceptes aparece aquí hasta que alguien escriba en su chat."
+                else "Cuando el administrador acepte una de tus solicitudes, aparecerá aquí para que puedan conversar."
+            PestaniaChat.CERRADOS -> "Aquí quedan los chats de reservas que ya terminaron o que el administrador cerró."
         },
         modifier = Modifier.padding(top = 48.dp)
     )

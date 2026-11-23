@@ -42,7 +42,9 @@ data class NuevaSolicitud(
     val fecha: LocalDate,
     val bloqueIds: List<Long>,
     val motivo: String,
-    val asistentes: Int
+    val asistentes: Int,
+    /** El usuario ya sabe que tiene otra solicitud a esa hora (en otro espacio) y quiere pedir igual. */
+    val confirmarCruce: Boolean = false
 )
 
 /** Solicitud ya creada (queda PENDIENTE hasta que el administrador la revise). */

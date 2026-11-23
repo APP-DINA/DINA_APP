@@ -3,6 +3,7 @@ package cl.app.dina.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cl.app.dina.data.model.Chat
+import cl.app.dina.data.model.EstadoSolicitud
 import cl.app.dina.data.remote.aMensaje
 import cl.app.dina.data.repository.ChatRepository
 import cl.app.dina.data.repository.SesionRepository
@@ -18,9 +19,13 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Las dos pestañas de la pantalla Chat. */
+/** Las pestañas de la pantalla Chat. */
 enum class PestaniaChat(val etiqueta: String) {
+    /** Conversaciones en curso: alguien ya escribió. */
     ABIERTOS("Abiertos"),
+    /** Solicitudes aceptadas cuyo chat todavía nadie usa. */
+    ACEPTADOS("Aceptados"),
+    /** La reserva terminó o el admin cerró el chat. */
     CERRADOS("Cerrados")
 }
 
@@ -34,14 +39,24 @@ data class ChatUiState(
     val esAdmin: Boolean = false,
     val hoy: LocalDate = LocalDate.now()
 ) {
-    val abiertos: List<Chat> get() = chats.filter { it.abierto }
-    val cerrados: List<Chat> get() = chats.filterNot { it.abierto }
-    val visibles: List<Chat> get() = if (pestania == PestaniaChat.ABIERTOS) abiertos else cerrados
+    /** Cada chat en una sola pestaña. */
+    fun pestaniaDe(chat: Chat): PestaniaChat = when {
+        !chat.abierto -> PestaniaChat.CERRADOS
+        // Aceptada y sin mensajes de nadie. Una cancelada va a Abiertos aunque nadie haya escrito:
+        // el chat sigue abierto justamente para aclarar la cancelación
+        !chat.iniciado && chat.solicitud.estado == EstadoSolicitud.APROBADA -> PestaniaChat.ACEPTADOS
+        else -> PestaniaChat.ABIERTOS
+    }
+
+    fun de(pestania: PestaniaChat): List<Chat> = chats.filter { pestaniaDe(it) == pestania }
+
+    val visibles: List<Chat> get() = de(pestania)
 }
 
 /**
- * Pestaña Chat: un chat por cada solicitud aprobada, separados en "Abiertos" (se puede escribir)
- * y "Cerrados" (la reserva terminó o el admin lo cerró). Las rechazadas no tienen chat.
+ * Pestaña Chat: un chat por cada solicitud aprobada, en "Abiertos" (alguien ya escribió),
+ * "Aceptados" (aún nadie lo usa) o "Cerrados" (la reserva terminó o el admin lo cerró).
+ * Las rechazadas no tienen chat.
  */
 class ChatViewModel(
     private val sesionRepository: SesionRepository,

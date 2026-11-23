@@ -16,7 +16,9 @@ data class ChatDto(
     @SerializedName("solicitud") val solicitud: SolicitudDto,
     /** ABIERTO o CERRADO */
     @SerializedName("estado") val estado: String,
-    @SerializedName("ultimoMensaje") val ultimoMensaje: MensajeDto?
+    @SerializedName("ultimoMensaje") val ultimoMensaje: MensajeDto?,
+    /** Alguien (usuario o admin) ya escribió; si no, solo hay avisos del sistema. */
+    @SerializedName("conversacionIniciada") val conversacionIniciada: Boolean
 )
 
 /** GET /api/chats/{id}?despuesDe=N */

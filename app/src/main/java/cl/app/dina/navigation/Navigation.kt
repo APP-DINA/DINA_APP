@@ -15,7 +15,9 @@ import cl.app.dina.ui.viewmodel.EstadoSesion
 import cl.app.dina.ui.viewmodel.SesionViewModel
 import cl.app.dina.ui.views.LoginScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -35,6 +37,7 @@ import cl.app.dina.ui.views.SolicitudScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import cl.app.dina.ui.viewmodel.ReservaEspacio2ViewModel
+import cl.app.dina.ui.viewmodel.ConteoAvisosViewModel
 import cl.app.dina.ui.viewmodel.ConversacionViewModel
 import cl.app.dina.ui.viewmodel.SolicitudViewModel
 import java.time.LocalDate
@@ -77,11 +80,21 @@ private enum class PantallaRaiz { CARGANDO, LOGIN, APP }
 
 /** App con sesión iniciada: TabBar abajo y las 5 pantallas. */
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    conteoAvisos: ConteoAvisosViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
     val navController = rememberNavController()
+
+    // Avisos sin leer (campana): se consultan cada 30 s con la app visible y al cambiar de pantalla
+    val noLeidas by conteoAvisos.noLeidas.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(conteoAvisos) {
+        conteoAvisos.reanudar()
+        onPauseOrDispose { conteoAvisos.pausar() }
+    }
 
     val entradaActual by navController.currentBackStackEntryAsState()
     val rutaActual = entradaActual?.destination?.route
+    LaunchedEffect(rutaActual) { conteoAvisos.actualizar() } // p. ej. al salir de un chat ya leído
     // Las pantallas secundarias mantienen marcada la pestaña de la que salen
     val pestaniaActual = when (rutaActual) {
         RUTA_RESERVA_ESPACIO_2 -> Pestania.RESERVA_ESPACIO
@@ -100,12 +113,40 @@ fun AppNavigation() {
         }
     }
 
+    /**
+     * Abre [ruta] dentro de la pestaña a la que pertenece (p. ej. desde un aviso: un chat en la
+     * pestaña Chat, una solicitud en Inicio). Así queda marcada esa pestaña, "<" vuelve a su
+     * pantalla principal y la pestaña de origen (Avisos) queda limpia para volver a tocarla.
+     */
+    /**
+     * Va a la solicitud o a la conversación [solicitudId] (rutas [patron]/[ruta]). Si esa misma pantalla
+     * es la anterior, simplemente vuelve a ella: así ir y venir entre el chat y la solicitud no apila
+     * pantallas (si no, "<" recorría chat → solicitud → chat → solicitud…).
+     */
+    val irSinRepetir: (patron: String, argumento: String, solicitudId: Long, ruta: String) -> Unit =
+        { patron, argumento, solicitudId, ruta ->
+            val anterior = navController.previousBackStackEntry
+            val esLaAnterior = anterior?.destination?.route == patron &&
+                anterior.arguments?.getLong(argumento) == solicitudId
+            if (esLaAnterior) navController.popBackStack() else navController.navigate(ruta)
+        }
+
+    val abrirEnPestania: (Pestania, String) -> Unit = { pestania, ruta ->
+        navController.navigate(pestania.ruta) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            // Sin restaurar: si la pestaña tenía otra pantalla abierta, se parte desde su principal
+        }
+        navController.navigate(ruta)
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             TabBar(
                 pestaniaActual = pestaniaActual,
-                onPestaniaClick = irAPestania
+                onPestaniaClick = irAPestania,
+                insignias = mapOf(Pestania.NOTIFICACIONES to noLeidas)
             )
         }
     ) { innerPadding ->
@@ -131,7 +172,9 @@ fun AppNavigation() {
                 val id = entrada.arguments?.getLong(SolicitudViewModel.ARG_SOLICITUD_ID) ?: 0
                 SolicitudScreen(
                     onVolver = { navController.popBackStack() },
-                    onAbrirChat = { navController.navigate(rutaConversacion(id)) }
+                    onAbrirChat = {
+                        irSinRepetir(RUTA_CONVERSACION, ConversacionViewModel.ARG_SOLICITUD_ID, id, rutaConversacion(id))
+                    }
                 )
             }
             composable(Pestania.RESERVA_ESPACIO.ruta) {
@@ -159,10 +202,17 @@ fun AppNavigation() {
             ) {
                 ConversacionScreen(
                     onVolver = { navController.popBackStack() },
-                    onVerSolicitud = { id -> navController.navigate(rutaSolicitud(id)) }
+                    onVerSolicitud = { id ->
+                        irSinRepetir(RUTA_SOLICITUD, SolicitudViewModel.ARG_SOLICITUD_ID, id, rutaSolicitud(id))
+                    }
                 )
             }
-            composable(Pestania.NOTIFICACIONES.ruta) { NotificacionesScreen() }
+            composable(Pestania.NOTIFICACIONES.ruta) {
+                NotificacionesScreen(
+                    onAbrirChat = { id -> abrirEnPestania(Pestania.CHAT, rutaConversacion(id)) },
+                    onAbrirSolicitud = { id -> abrirEnPestania(Pestania.INICIO, rutaSolicitud(id)) }
+                )
+            }
             composable(Pestania.MENU.ruta) {
                 MenuScreen(onAgregarEspacio = { navController.navigate(RUTA_AGREGAR_ESPACIO) })
             }

@@ -8,6 +8,7 @@ import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoBloque
 import cl.app.dina.data.model.NuevaSolicitud
 import cl.app.dina.data.model.SolicitudCreada
+import cl.app.dina.data.remote.ErrorDelBackend
 import cl.app.dina.data.remote.aMensaje
 import cl.app.dina.data.repository.EspacioRepository
 import cl.app.dina.data.repository.SolicitudRepository
@@ -39,6 +40,8 @@ data class ReservaEspacio2UiState(
     val errorMotivo: String? = null,
     /** Error que viene del backend al solicitar. */
     val errorGeneral: String? = null,
+    /** Ya tiene otra solicitud a esa hora: el mensaje del backend para el diálogo "¿Solicitar igual?". */
+    val avisoCruce: String? = null,
     val enviando: Boolean = false
 ) {
     /** La sede no atiende ese día (domingo) o ya pasaron todos los bloques. */
@@ -91,8 +94,7 @@ class ReservaEspacio2ViewModel(
         cargarBloques()
     }
 
-    // ── Día y bloques ───────────────────────────────────────────────────
-
+    // Día y bloques
     /** Cambiar el día borra la selección y trae los bloques de ese día. */
     fun seleccionarFecha(dia: LocalDate) {
         _uiState.update {
@@ -130,17 +132,25 @@ class ReservaEspacio2ViewModel(
         }
     }
 
-    // ── Asistentes y motivo ─────────────────────────────────────────────
-
+    // Asistentes y motivo
     fun onAsistentesChange(texto: String) =
         _uiState.update { it.copy(asistentes = texto.filter(Char::isDigit).take(3), errorAsistentes = null) }
 
     fun onMotivoChange(texto: String) =
         _uiState.update { it.copy(motivo = texto.take(MAX_MOTIVO), errorMotivo = null, errorGeneral = null) }
 
-    // ── Solicitar ───────────────────────────────────────────────────────
+    // Solicitar
+    /** El usuario aceptó pedir aunque ya tiene otra solicitud a esa hora. */
+    fun solicitarDeTodasFormas() {
+        _uiState.update { it.copy(avisoCruce = null) }
+        solicitar(confirmarCruce = true)
+    }
 
-    fun solicitar() {
+    fun cancelarCruce() = _uiState.update { it.copy(avisoCruce = null) }
+
+    fun solicitar() = solicitar(confirmarCruce = false)
+
+    private fun solicitar(confirmarCruce: Boolean) {
         val s = _uiState.value
         val espacio = s.espacio ?: return
         if (s.enviando) return
@@ -164,7 +174,8 @@ class ReservaEspacio2ViewModel(
             fecha = s.calendario.fecha,
             bloqueIds = s.seleccion.map { it.id },
             motivo = s.motivo.trim(),
-            asistentes = asistentes
+            asistentes = asistentes,
+            confirmarCruce = confirmarCruce
         )
         viewModelScope.launch {
             intentar { solicitudRepository.solicitar(nueva) }
@@ -173,9 +184,14 @@ class ReservaEspacio2ViewModel(
                     _eventos.send(ReservaEspacio2Evento.SolicitudEnviada(creada))
                 }
                 .onFailure { e ->
-                    // Ej.: "El espacio ya está reservado en ese horario": se actualizan los bloques
-                    _uiState.update { it.copy(enviando = false, errorGeneral = e.aMensaje()) }
-                    cargarBloques(conservarSeleccion = true)
+                    if (e is ErrorDelBackend && e.codigo == ErrorDelBackend.CRUCE_PROPIO) {
+                        // No es un error: se pregunta si quiere pedir igual
+                        _uiState.update { it.copy(enviando = false, avisoCruce = e.message) }
+                    } else {
+                        // Ej.: "El espacio ya está reservado en ese horario": se actualizan los bloques
+                        _uiState.update { it.copy(enviando = false, errorGeneral = e.aMensaje()) }
+                        cargarBloques(conservarSeleccion = true)
+                    }
                 }
         }
     }

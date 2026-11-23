@@ -5,10 +5,12 @@ import cl.app.dina.data.model.Chat
 import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoSolicitud
 import cl.app.dina.data.model.Mensaje
+import cl.app.dina.data.model.Notificacion
 import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Solicitante
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.model.TipoEspacio
+import cl.app.dina.data.model.TipoNotificacion
 import cl.app.dina.data.model.Usuario
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -77,10 +79,21 @@ fun MensajeDto.aModelo() = Mensaje(
     creadoEn = creadoEn.aFechaHora() ?: LocalDateTime.MIN
 )
 
+fun NotificacionDto.aModelo() = Notificacion(
+    id = id,
+    tipo = TipoNotificacion.desde(tipo),
+    titulo = titulo,
+    mensaje = mensaje,
+    solicitudId = solicitudId,
+    leida = leida,
+    creadaEn = creadaEn.aFechaHora() ?: LocalDateTime.MIN
+)
+
 fun ChatDto.aModelo() = Chat(
     solicitud = solicitud.aResumen(),
     abierto = estado == "ABIERTO",
-    ultimoMensaje = ultimoMensaje?.aModelo()
+    ultimoMensaje = ultimoMensaje?.aModelo(),
+    iniciado = conversacionIniciada
 )
 
 /** "2026-11-23T10:15:30.123" → LocalDateTime (null si viene con otro formato). */

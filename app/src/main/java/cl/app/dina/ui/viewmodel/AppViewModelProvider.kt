@@ -71,6 +71,12 @@ object AppViewModelProvider {
             )
         }
         initializer {
+            NotificacionesViewModel(dinaApplication().container.notificacionRepository)
+        }
+        initializer {
+            ConteoAvisosViewModel(dinaApplication().container.notificacionRepository)
+        }
+        initializer {
             AgregarEspacioViewModel(dinaApplication().container.espacioRepository)
         }
     }

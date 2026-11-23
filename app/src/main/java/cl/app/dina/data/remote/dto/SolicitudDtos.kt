@@ -28,7 +28,8 @@ data class CrearSolicitudDto(
     @SerializedName("bloqueIds") val bloqueIds: List<Long>,
     /** Motivo de la reserva (el backend lo llama "actividad"). */
     @SerializedName("actividad") val actividad: String,
-    @SerializedName("asistentes") val asistentes: Int
+    @SerializedName("asistentes") val asistentes: Int,
+    @SerializedName("confirmarCruce") val confirmarCruce: Boolean
 )
 
 /** Una solicitud (respuesta de POST /api/solicitudes y de GET /api/admin/solicitudes). */

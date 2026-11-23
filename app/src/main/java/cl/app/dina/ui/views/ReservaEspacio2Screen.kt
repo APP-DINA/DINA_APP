@@ -1,5 +1,6 @@
 package cl.app.dina.ui.views
 
+import androidx.compose.material3.AlertDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -111,6 +112,19 @@ fun ReservaEspacio2Screen(
         ),
         modifier = modifier
     )
+
+    // Ya tiene otra solicitud a esa hora (en otro espacio): se puede, pero se confirma
+    state.avisoCruce?.let { aviso ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelarCruce,
+            title = { Text("¿Solicitar de todas formas?") },
+            text = {
+                Text("$aviso\n\nPuedes tener varias solicitudes a la misma hora; el administrador revisará cada una.")
+            },
+            confirmButton = { TextButton(onClick = viewModel::solicitarDeTodasFormas) { Text("Solicitar") } },
+            dismissButton = { TextButton(onClick = viewModel::cancelarCruce) { Text("Cancelar") } }
+        )
+    }
 }
 
 /** Solo dibuja: recibe el estado y avisa lo que hace el usuario. */

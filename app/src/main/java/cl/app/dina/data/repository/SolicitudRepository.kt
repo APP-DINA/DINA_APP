@@ -6,19 +6,25 @@ import cl.app.dina.data.model.NuevaSolicitud
 import cl.app.dina.data.model.SolicitudCreada
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.remote.DinaApi
+import cl.app.dina.data.remote.ErrorDelBackend
+import cl.app.dina.data.remote.leerErrorDelBackend
 import cl.app.dina.data.remote.dto.CancelarDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.RechazarDto
 import cl.app.dina.data.remote.dto.aResumen
 import cl.app.dina.data.remote.dto.hhmm
 import java.time.LocalDate
+import retrofit2.HttpException
 
 /** Disponibilidad por bloques, creación de solicitudes y revisión del administrador. */
 interface SolicitudRepository {
     /** Los bloques del día con su estado. Lanza una excepción si no hay conexión o el backend falla. */
     suspend fun disponibilidad(espacioId: Long, fecha: LocalDate): List<BloqueDia>
 
-    /** Crea la solicitud (queda PENDIENTE). Lanza HttpException con el mensaje del backend si no se acepta. */
+    /**
+     * Crea la solicitud (queda PENDIENTE). Si el backend no la acepta lanza [ErrorDelBackend]; con
+     * codigo [ErrorDelBackend.CRUCE_PROPIO] si el usuario ya tiene otra a esa hora y falta confirmar.
+     */
     suspend fun solicitar(solicitud: NuevaSolicitud): SolicitudCreada
 
     /** Solo ADMIN: solicitudes pendientes de revisar, de la fecha más cercana a la más lejana. */
@@ -59,15 +65,20 @@ class RemoteSolicitudRepository(private val api: DinaApi) : SolicitudRepository 
         }
 
     override suspend fun solicitar(solicitud: NuevaSolicitud): SolicitudCreada {
-        val r = api.crearSolicitud(
-            CrearSolicitudDto(
-                espacioId = solicitud.espacioId,
-                fecha = solicitud.fecha.toString(),
-                bloqueIds = solicitud.bloqueIds,
-                actividad = solicitud.motivo,
-                asistentes = solicitud.asistentes
+        val r = try {
+            api.crearSolicitud(
+                CrearSolicitudDto(
+                    espacioId = solicitud.espacioId,
+                    fecha = solicitud.fecha.toString(),
+                    bloqueIds = solicitud.bloqueIds,
+                    actividad = solicitud.motivo,
+                    asistentes = solicitud.asistentes,
+                    confirmarCruce = solicitud.confirmarCruce
+                )
             )
-        )
+        } catch (e: HttpException) {
+            throw e.leerErrorDelBackend()
+        }
         return SolicitudCreada(r.id, LocalDate.parse(r.fecha), r.horaInicio.hhmm(), r.horaFin.hhmm(), r.estado)
     }
 

@@ -28,8 +28,10 @@ data class UsuarioDto(
     @SerializedName("fotoUrl") val fotoUrl: String?
 )
 
-/** Forma de todos los errores del backend: { estado, error, mensaje, fecha } */
+/** Forma de todos los errores del backend: { estado, error, mensaje, codigo, fecha } */
 data class ErrorDto(
     @SerializedName("estado") val estado: Int?,
-    @SerializedName("mensaje") val mensaje: String?
+    @SerializedName("mensaje") val mensaje: String?,
+    /** Para reconocer casos concretos (p. ej. CRUCE_PROPIO); casi siempre null. */
+    @SerializedName("codigo") val codigo: String? = null
 )

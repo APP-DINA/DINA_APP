@@ -41,8 +41,28 @@ object RetrofitClient {
             .create(DinaApi::class.java)
 }
 
+/**
+ * Error del backend ya leído (el cuerpo de un HttpException solo se puede leer una vez).
+ * [codigo] permite reaccionar a casos concretos, p. ej. [CRUCE_PROPIO].
+ */
+class ErrorDelBackend(mensaje: String, val codigo: String?) : Exception(mensaje) {
+    companion object {
+        /** El usuario ya tiene otra solicitud a esa hora: se le pregunta si quiere pedir igual. */
+        const val CRUCE_PROPIO = "CRUCE_PROPIO"
+    }
+}
+
+/** Convierte un HttpException en [ErrorDelBackend] (con su mensaje y código); otros errores, tal cual. */
+fun Throwable.leerErrorDelBackend(): Throwable {
+    if (this !is HttpException) return this
+    val cuerpo = response()?.errorBody()?.string()
+    val error = runCatching { Gson().fromJson(cuerpo, ErrorDto::class.java) }.getOrNull()
+    return ErrorDelBackend(error?.mensaje ?: "El servidor respondió con un error (${code()})", error?.codigo)
+}
+
 /** Convierte un error de red o del backend en un mensaje para mostrar al usuario. */
 fun Throwable.aMensaje(): String = when (this) {
+    is ErrorDelBackend -> message.orEmpty()
     is HttpException -> {
         val cuerpo = response()?.errorBody()?.string()
         val mensaje = runCatching { Gson().fromJson(cuerpo, ErrorDto::class.java)?.mensaje }.getOrNull()

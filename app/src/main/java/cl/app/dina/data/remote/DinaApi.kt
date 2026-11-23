@@ -3,9 +3,11 @@ package cl.app.dina.data.remote
 import cl.app.dina.data.remote.dto.CancelarDto
 import cl.app.dina.data.remote.dto.ChatDetalleDto
 import cl.app.dina.data.remote.dto.ChatDto
+import cl.app.dina.data.remote.dto.ConteoDto
 import cl.app.dina.data.remote.dto.CrearEspacioDto
 import cl.app.dina.data.remote.dto.EnviarMensajeDto
 import cl.app.dina.data.remote.dto.MensajeDto
+import cl.app.dina.data.remote.dto.NotificacionDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.DisponibilidadDto
 import cl.app.dina.data.remote.dto.EspacioDto
@@ -72,6 +74,20 @@ interface DinaApi {
     /** Solo ADMIN: cancela una reserva ya aprobada de otra persona (motivo obligatorio). */
     @PATCH("api/admin/solicitudes/{id}/cancelar")
     suspend fun cancelarReservaComoAdmin(@Path("id") id: Long, @Body body: CancelarDto): SolicitudDto
+
+    // Avisos
+    @GET("api/notificaciones")
+    suspend fun notificaciones(): List<NotificacionDto>
+
+    /** Para el número sobre la campana de la barra de abajo. */
+    @GET("api/notificaciones/no-leidas")
+    suspend fun notificacionesNoLeidas(): ConteoDto
+
+    @DELETE("api/notificaciones/{id}")
+    suspend fun borrarNotificacion(@Path("id") id: Long)
+
+    @DELETE("api/notificaciones")
+    suspend fun borrarNotificaciones()
 
     //Chat (uno por solicitud aprobada; {id} = id de la solicitud)
     @GET("api/chats")

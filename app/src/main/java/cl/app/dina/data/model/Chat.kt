@@ -5,11 +5,13 @@ import java.time.LocalDateTime
 /**
  * Chat de una solicitud aprobada (pestaña Chat). Lo ven quien la pidió y los administradores.
  * [abierto]: se puede escribir. Se cierra solo cuando termina la reserva, o cuando el admin lo cierra.
+ * [iniciado]: alguien ya escribió (los avisos del sistema no cuentan).
  */
 data class Chat(
     val solicitud: SolicitudResumen,
     val abierto: Boolean,
-    val ultimoMensaje: Mensaje?
+    val ultimoMensaje: Mensaje?,
+    val iniciado: Boolean = true
 )
 
 /** [autor] null = aviso del sistema ("Solicitud aprobada", "Reserva cancelada"...). */
