@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import cl.app.dina.ui.components.TabBar
 import cl.app.dina.ui.views.ChatScreen
 import cl.app.dina.ui.views.InicioScreen
+import cl.app.dina.ui.views.AgregarEspacioScreen
 import cl.app.dina.ui.views.MenuScreen
 import cl.app.dina.ui.views.NotificacionesScreen
 import cl.app.dina.ui.views.ReservaEspacio2Screen
@@ -46,19 +47,30 @@ fun NavegacionRaiz(
 ) {
     val estado by sesionViewModel.estado.collectAsStateWithLifecycle()
 
-    Crossfade(targetState = estado, label = "sesion") { e ->
-        when (e) {
+    // La transición depende solo de QUÉ se muestra, no de los datos del usuario: si cambia su
+    // foto o su nombre, la app sigue en la misma pantalla (no se crea una navegación nueva).
+    val pantalla = when (estado) {
+        EstadoSesion.Cargando -> PantallaRaiz.CARGANDO
+        EstadoSesion.SinSesion -> PantallaRaiz.LOGIN
+        is EstadoSesion.ConSesion -> PantallaRaiz.APP
+    }
+
+    Crossfade(targetState = pantalla, label = "sesion") { p ->
+        when (p) {
             // Mientras se lee el teléfono se muestra solo el fondo (sin parpadeo de Login)
-            EstadoSesion.Cargando -> Box(
+            PantallaRaiz.CARGANDO -> Box(
                 Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             )
-            EstadoSesion.SinSesion -> LoginScreen()
-            is EstadoSesion.ConSesion -> AppNavigation()
+            PantallaRaiz.LOGIN -> LoginScreen()
+            PantallaRaiz.APP -> AppNavigation()
         }
     }
 }
+
+/** Qué muestra NavegacionRaiz. */
+private enum class PantallaRaiz { CARGANDO, LOGIN, APP }
 
 /** App con sesión iniciada: TabBar abajo y las 5 pantallas. */
 @Composable
@@ -71,6 +83,7 @@ fun AppNavigation() {
     val pestaniaActual = when (rutaActual) {
         RUTA_RESERVA_ESPACIO_2 -> Pestania.RESERVA_ESPACIO
         RUTA_SOLICITUD -> Pestania.INICIO
+        RUTA_AGREGAR_ESPACIO -> Pestania.MENU
         else -> Pestania.entries.firstOrNull { it.ruta == rutaActual }
     }
 
@@ -131,7 +144,12 @@ fun AppNavigation() {
             }
             composable(Pestania.CHAT.ruta) { ChatScreen() }
             composable(Pestania.NOTIFICACIONES.ruta) { NotificacionesScreen() }
-            composable(Pestania.MENU.ruta) { MenuScreen() }
+            composable(Pestania.MENU.ruta) {
+                MenuScreen(onAgregarEspacio = { navController.navigate(RUTA_AGREGAR_ESPACIO) })
+            }
+            composable(RUTA_AGREGAR_ESPACIO) {
+                AgregarEspacioScreen(onVolver = { navController.popBackStack() })
+            }
         }
     }
 }
@@ -143,6 +161,9 @@ private const val RUTA_RESERVA_ESPACIO_2 =
 private fun rutaReservaEspacio2(espacioId: Long, fecha: LocalDate) = "reserva_espacio_2/$espacioId/$fecha"
 
 /** Detalle de una solicitud (se abre desde el Inicio del usuario y del administrador). */
+/** Formulario para agregar un espacio (solo admin, desde el Menú). */
+private const val RUTA_AGREGAR_ESPACIO = "agregar_espacio"
+
 private const val RUTA_SOLICITUD = "solicitud/{${SolicitudViewModel.ARG_SOLICITUD_ID}}"
 
 private fun rutaSolicitud(solicitudId: Long) = "solicitud/$solicitudId"

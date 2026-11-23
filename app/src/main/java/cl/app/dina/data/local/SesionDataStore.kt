@@ -10,3 +10,6 @@ import androidx.datastore.preferences.preferencesDataStore
  * Se declara una sola vez (a nivel de archivo) para que exista una única instancia.
  */
 val Context.sesionDataStore: DataStore<Preferences> by preferencesDataStore(name = "sesion")
+
+/** Preferencias del teléfono (tema). Aparte de la sesión: no se borran al cerrar sesión. */
+val Context.preferenciasDataStore: DataStore<Preferences> by preferencesDataStore(name = "preferencias")

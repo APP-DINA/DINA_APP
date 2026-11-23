@@ -1,5 +1,6 @@
 package cl.app.dina.data.remote
 
+import cl.app.dina.data.remote.dto.CrearEspacioDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.DisponibilidadDto
 import cl.app.dina.data.remote.dto.EspacioDto
@@ -10,6 +11,7 @@ import cl.app.dina.data.remote.dto.SolicitudDto
 import cl.app.dina.data.remote.dto.UsuarioDto
 import okhttp3.MultipartBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
@@ -37,6 +39,10 @@ interface DinaApi {
     /** Catálogo completo; la búsqueda y los filtros se hacen en la app. */
     @GET("api/espacios")
     suspend fun espacios(): List<EspacioDto>
+
+    /** Solo ADMIN. Agrega un espacio reservable (409 si el código ya existe). */
+    @POST("api/admin/espacios")
+    suspend fun crearEspacio(@Body body: CrearEspacioDto): EspacioDto
 
     /** Estado de cada bloque del día. [fecha] = "AAAA-MM-DD". */
     @GET("api/espacios/{id}/disponibilidad")
@@ -70,6 +76,10 @@ interface DinaApi {
     @Multipart
     @PUT("api/usuarios/me/foto")
     suspend fun subirFoto(@Part foto: MultipartBody.Part): UsuarioDto
+
+    /** Quita la foto de perfil propia (vuelven a verse las iniciales). */
+    @DELETE("api/usuarios/me/foto")
+    suspend fun borrarFoto(): UsuarioDto
 
     /** Solo ADMIN. [estado] = PENDIENTE, APROBADA, RECHAZADA o CANCELADA (null = todas). */
     @GET("api/admin/solicitudes")

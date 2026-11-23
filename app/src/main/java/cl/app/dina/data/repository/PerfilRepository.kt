@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import cl.app.dina.data.model.Usuario
 import cl.app.dina.data.remote.DinaApi
+import cl.app.dina.data.remote.dto.UsuarioDto
 import cl.app.dina.data.remote.dto.aModelo
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
@@ -24,6 +25,9 @@ interface PerfilRepository {
      * la nueva foto en la sesión (el encabezado se actualiza solo). Lanza una excepción si falla.
      */
     suspend fun cambiarFoto(imagen: Uri): Usuario
+
+    /** Quita la foto: se vuelven a mostrar las iniciales. Lanza una excepción si falla. */
+    suspend fun borrarFoto(): Usuario
 }
 
 /** Lado de la foto que se sube: de sobra para un avatar y pesa unos 50–100 KB en JPEG. */
@@ -40,7 +44,14 @@ class RemotePerfilRepository(
         val parte = MultipartBody.Part.createFormData(
             "foto", "perfil.jpg", jpeg.toRequestBody("image/jpeg".toMediaType())
         )
-        val usuario = api.subirFoto(parte).aModelo()
+        return guardarEnSesion(api.subirFoto(parte))
+    }
+
+    override suspend fun borrarFoto(): Usuario = guardarEnSesion(api.borrarFoto())
+
+    /** El backend devuelve el usuario con su nueva fotoUrl: se guarda y la app se actualiza sola. */
+    private suspend fun guardarEnSesion(dto: UsuarioDto): Usuario {
+        val usuario = dto.aModelo()
             ?: throw IllegalStateException("Tu cuenta no tiene un dominio institucional válido")
         sesionRepository.actualizarUsuario(usuario)
         return usuario

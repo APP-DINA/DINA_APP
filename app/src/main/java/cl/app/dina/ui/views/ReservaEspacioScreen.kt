@@ -3,7 +3,6 @@ package cl.app.dina.ui.views
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,17 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,12 +27,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,6 +40,7 @@ import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.ui.components.CargandoView
 import cl.app.dina.ui.components.EspacioCard
 import cl.app.dina.ui.components.MensajeView
+import cl.app.dina.ui.components.MenuDesplegable
 import cl.app.dina.ui.components.SelectorDia
 import cl.app.dina.ui.components.colorEscuela
 import cl.app.dina.ui.components.nombreEscuela
@@ -184,18 +175,18 @@ private fun Filtros(state: ReservaEspacioUiState, acciones: ReservaEspacioAccion
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        MenuFiltro(
+        MenuDesplegable(
             etiqueta = "Tipo",
-            textoTodos = "Todos",
+            textoNinguno = "Todos",
             seleccion = state.filtros.tipo,
             opciones = state.tiposDisponibles,
             texto = { it.etiqueta },
             onSeleccion = acciones.onTipoChange,
             modifier = Modifier.weight(1f)
         )
-        MenuFiltro(
+        MenuDesplegable(
             etiqueta = "Escuela",
-            textoTodos = "Todas",
+            textoNinguno = "Todas",
             seleccion = state.filtros.escuela,
             opciones = state.escuelasDisponibles,
             texto = { nombreEscuela(it.codigo) },
@@ -204,64 +195,6 @@ private fun Filtros(state: ReservaEspacioUiState, acciones: ReservaEspacioAccion
             modifier = Modifier.weight(1f)
         )
     }
-}
-
-/** Menú desplegable de Material 3 (ExposedDropdownMenuBox) para un filtro. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T : Any> MenuFiltro(
-    etiqueta: String,
-    textoTodos: String,
-    seleccion: T?,
-    opciones: List<T>,
-    texto: (T) -> String,
-    onSeleccion: (T?) -> Unit,
-    modifier: Modifier = Modifier,
-    color: (@Composable (T) -> Color)? = null
-) {
-    var abierto by remember { mutableStateOf(false) }
-
-    // Punto de color de la opción; espacio vacío para "Todos"; nada si el menú no usa colores.
-    val punto: (T?) -> (@Composable () -> Unit)? = { opcion ->
-        color?.let { colorDe -> { PuntoColor(opcion?.let { colorDe(it) }) } }
-    }
-
-    ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }, modifier = modifier) {
-        OutlinedTextField(
-            value = seleccion?.let(texto) ?: textoTodos,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            label = { Text(etiqueta) },
-            leadingIcon = seleccion?.let { punto(it) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = abierto) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-        )
-        ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            (listOf(null) + opciones).forEach { opcion ->
-                DropdownMenuItem(
-                    text = { Text(opcion?.let(texto) ?: textoTodos) },
-                    leadingIcon = punto(opcion),
-                    onClick = {
-                        onSeleccion(opcion)
-                        abierto = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PuntoColor(color: Color?) {
-    Box(
-        Modifier
-            .size(10.dp)
-            .background(color ?: Color.Transparent, CircleShape)
-    )
 }
 
 /** Listado */

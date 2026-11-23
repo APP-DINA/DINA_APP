@@ -1,12 +1,14 @@
 package cl.app.dina.di
 
 import android.content.Context
+import cl.app.dina.data.local.preferenciasDataStore
 import cl.app.dina.data.local.sesionDataStore
 import cl.app.dina.data.remote.DinaApi
 import cl.app.dina.data.remote.RetrofitClient
 import cl.app.dina.data.repository.AuthRepository
 import cl.app.dina.data.repository.EspacioRepository
 import cl.app.dina.data.repository.PerfilRepository
+import cl.app.dina.data.repository.PreferenciasRepository
 import cl.app.dina.data.repository.RemoteAuthRepository
 import cl.app.dina.data.repository.RemoteEspacioRepository
 import cl.app.dina.data.repository.RemotePerfilRepository
@@ -22,6 +24,7 @@ interface AppContainer {
     val espacioRepository: EspacioRepository
     val solicitudRepository: SolicitudRepository
     val perfilRepository: PerfilRepository
+    val preferenciasRepository: PreferenciasRepository
 
     /** Cliente HTTP con el token de sesión: lo usa también Coil para cargar las fotos de perfil. */
     val okHttpClient: OkHttpClient
@@ -32,6 +35,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val sesionRepository: SesionRepository by lazy {
         SesionRepository(appContext.sesionDataStore)
+    }
+
+    override val preferenciasRepository: PreferenciasRepository by lazy {
+        PreferenciasRepository(appContext.preferenciasDataStore)
     }
 
     override val okHttpClient: OkHttpClient by lazy { RetrofitClient.crearOkHttp(sesionRepository) }

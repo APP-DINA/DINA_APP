@@ -2,6 +2,20 @@ package cl.app.dina.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
+/** Cuerpo de POST /api/admin/espacios. */
+data class CrearEspacioDto(
+    @SerializedName("codigo") val codigo: String,
+    @SerializedName("nombre") val nombre: String,
+    @SerializedName("edificio") val edificio: String,
+    @SerializedName("piso") val piso: Int,
+    @SerializedName("tipo") val tipo: String,
+    @SerializedName("capacidad") val capacidad: Int,
+    @SerializedName("escuela") val escuela: String?,
+    @SerializedName("proyector") val proyector: Boolean,
+    @SerializedName("computadores") val computadores: Boolean,
+    @SerializedName("climatizacion") val climatizacion: Boolean
+)
+
 /** Un espacio tal como lo entrega GET /api/espacios de dina_backend. */
 data class EspacioDto(
     @SerializedName("id") val id: Long,

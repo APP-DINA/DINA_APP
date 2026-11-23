@@ -11,12 +11,8 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import cl.app.dina.data.model.ModoTema
 
-/**
- * Las 3 opciones que tendrá la sección "Tema" de la app.
- * SISTEMA sigue la configuración del teléfono; CLARO y OSCURO la ignoran.
- */
-enum class ModoTema { SISTEMA, CLARO, OSCURO }
 
 private val DarkColorScheme = darkColorScheme(
     primary = DuocAmarillo,

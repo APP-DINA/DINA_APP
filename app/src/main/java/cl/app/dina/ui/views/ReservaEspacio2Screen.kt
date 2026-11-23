@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +40,9 @@ import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoBloque
 import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.ui.components.BotonPrincipal
+import cl.app.dina.ui.components.CampoFormulario
+import cl.app.dina.ui.components.TextoAyuda
+import cl.app.dina.ui.components.TextoError
 import cl.app.dina.ui.components.CargandoView
 import cl.app.dina.ui.components.EncabezadoVolver
 import cl.app.dina.ui.components.EspacioCard
@@ -273,47 +274,6 @@ private fun Formulario(state: ReservaEspacio2UiState, espacio: Espacio, acciones
         BotonPrincipal(texto = "Solicitar", onClick = acciones.onSolicitar, cargando = state.enviando)
         TextoAyuda("La solicitud queda pendiente hasta que un administrador la apruebe.")
     }
-}
-
-/**
- * Campo de texto del formulario: debajo muestra el [error] si lo hay, o la [ayuda].
- * [lineas] = 1 es un campo de una línea; más es un área de texto.
- */
-@Composable
-private fun CampoFormulario(
-    valor: String,
-    onChange: (String) -> Unit,
-    etiqueta: String,
-    error: String?,
-    ayuda: String,
-    habilitado: Boolean,
-    ejemplo: String? = null,
-    lineas: Int = 1,
-    teclado: KeyboardType = KeyboardType.Text
-) {
-    OutlinedTextField(
-        value = valor,
-        onValueChange = onChange,
-        label = { Text(etiqueta) },
-        placeholder = ejemplo?.let { { Text(it) } },
-        singleLine = lineas == 1,
-        minLines = lineas,
-        isError = error != null,
-        supportingText = { Text(error ?: ayuda) },
-        keyboardOptions = KeyboardOptions(keyboardType = teclado),
-        enabled = habilitado,
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@Composable
-private fun TextoAyuda(texto: String) {
-    Text(texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
-private fun TextoError(texto: String, modifier: Modifier = Modifier) {
-    Text(texto, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = modifier)
 }
 
 @Preview(showBackground = true, heightDp = 1100)

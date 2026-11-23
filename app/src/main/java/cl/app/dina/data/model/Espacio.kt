@@ -23,6 +23,28 @@ data class Espacio(
     val climatizacion: Boolean
 )
 
+/** Edificios de la sede con espacios reservables (los mismos códigos que el backend). */
+enum class Edificio(val nombre: String) {
+    NORTE("Edificio Norte"),
+    CENTRAL("Edificio Central"),
+    SUR("Edificio Sur"),
+    CTI("Edificio Tecnológico CTI")
+}
+
+/** Lo que el administrador envía para agregar un espacio. [escuela] null = uso general. */
+data class NuevoEspacio(
+    val codigo: String,
+    val nombre: String,
+    val edificio: Edificio,
+    val piso: Int,
+    val tipo: TipoEspacio,
+    val capacidad: Int,
+    val escuela: String?,
+    val proyector: Boolean,
+    val computadores: Boolean,
+    val climatizacion: Boolean
+)
+
 enum class TipoEspacio(val etiqueta: String) {
     SALA("Sala"),
     LABORATORIO("Laboratorio"),

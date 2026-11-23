@@ -51,8 +51,13 @@ object AppViewModelProvider {
         initializer {
             MenuViewModel(
                 sesionRepository = dinaApplication().container.sesionRepository,
-                authRepository = dinaApplication().container.authRepository
+                authRepository = dinaApplication().container.authRepository,
+                perfilRepository = dinaApplication().container.perfilRepository,
+                preferenciasRepository = dinaApplication().container.preferenciasRepository
             )
+        }
+        initializer {
+            AgregarEspacioViewModel(dinaApplication().container.espacioRepository)
         }
     }
 }
