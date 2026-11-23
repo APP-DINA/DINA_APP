@@ -30,6 +30,7 @@ import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.ui.theme.DINATheme
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /**
@@ -149,7 +150,21 @@ private fun EtiquetaEnRevision() {
 }
 
 /** 10:15:30 → "10:15" */
-private fun LocalTime.hhmm(): String = "%02d:%02d".format(hour, minute)
+fun LocalTime.hhmm(): String = "%02d:%02d".format(hour, minute)
+
+/** Hora de un mensaje en la lista de chats: "10:15" si es de hoy, "Ayer" o "Lun. 23". */
+fun horaChat(momento: LocalDateTime, hoy: LocalDate): String = when (momento.toLocalDate()) {
+    hoy -> momento.toLocalTime().hhmm()
+    hoy.minusDays(1) -> "Ayer"
+    else -> momento.toLocalDate().diaCorto
+}
+
+/** Separador de día dentro de una conversación: "Hoy", "Ayer" o "Lun. 23 de noviembre". */
+fun diaConversacion(dia: LocalDate, hoy: LocalDate): String = when (dia) {
+    hoy -> "Hoy"
+    hoy.minusDays(1) -> "Ayer"
+    else -> "${dia.diaCorto} de ${dia.nombreMes.lowercase()}"
+}
 
 /** "Hoy · Lun. 23 de noviembre", "Mañana · Mar. 24 de noviembre" o "Mié. 25 de noviembre". */
 fun fechaEvento(fecha: LocalDate, hoy: LocalDate): String {

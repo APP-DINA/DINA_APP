@@ -46,8 +46,15 @@ data class SolicitudDto(
     /** Lo que escribió el administrador al aprobar o rechazar (puede venir vacío). */
     @SerializedName("comentarioAdmin") val comentarioAdmin: String?,
     @SerializedName("solicitante") val solicitante: UsuarioDto,
+    /** Se aprobó alguna vez: tiene chat (aunque después se haya cancelado). */
+    @SerializedName("tieneChat") val tieneChat: Boolean,
     /** Cuándo se pidió: "2026-11-23T10:15:30.123" */
     @SerializedName("creadaEn") val creadaEn: String?
+)
+
+/** Cuerpo de PATCH .../cancelar: opcional para el usuario, obligatorio para el admin. */
+data class CancelarDto(
+    @SerializedName("motivo") val motivo: String?
 )
 
 /** Cuerpo de PATCH /api/admin/solicitudes/{id}/rechazar (el motivo es opcional). */

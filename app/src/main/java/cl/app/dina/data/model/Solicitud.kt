@@ -69,7 +69,9 @@ data class SolicitudResumen(
     /** Lo que escribió el administrador al aprobar o rechazar. */
     val comentarioAdmin: String? = null,
     /** Cuándo se pidió (ordena quién pidió primero en una doble reserva). */
-    val creadaEn: LocalDateTime? = null
+    val creadaEn: LocalDateTime? = null,
+    /** Se aprobó alguna vez: tiene chat (aunque después se haya cancelado). */
+    val tieneChat: Boolean = false
 ) {
     /** Duración en horas ("10:00" a "12:00" → 2): cada bloque dura 1 hora. */
     val horas: Long get() = Duration.between(LocalTime.parse(inicio), LocalTime.parse(fin)).toHours()

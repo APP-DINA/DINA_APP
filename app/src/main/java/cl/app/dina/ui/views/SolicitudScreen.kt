@@ -305,16 +305,19 @@ private fun Botones(state: SolicitudUiState, acciones: SolicitudAcciones) {
                 colores = coloresFijos(RojoAccion)
             )
         }
-        OutlinedButton(
-            onClick = acciones.onAbrirChat,
-            enabled = !ocupado,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-        ) {
-            Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.size(8.dp))
-            Text("Abrir chat")
+        // Solo las solicitudes aprobadas (aunque después se cancelen) tienen chat
+        if (state.solicitud?.tieneChat == true) {
+            OutlinedButton(
+                onClick = acciones.onAbrirChat,
+                enabled = !ocupado,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.size(8.dp))
+                Text("Abrir chat")
+            }
         }
     }
 }

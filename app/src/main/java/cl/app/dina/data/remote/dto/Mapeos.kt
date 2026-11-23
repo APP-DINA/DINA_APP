@@ -1,8 +1,10 @@
 package cl.app.dina.data.remote.dto
 
 import cl.app.dina.BuildConfig
+import cl.app.dina.data.model.Chat
 import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoSolicitud
+import cl.app.dina.data.model.Mensaje
 import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Solicitante
 import cl.app.dina.data.model.SolicitudResumen
@@ -52,17 +54,37 @@ fun SolicitudDto.aResumen() = SolicitudResumen(
     fin = horaFin.hhmm(),
     motivo = actividad,
     asistentes = asistentes,
-    solicitante = Solicitante(
-        id = solicitante.id,
-        nombre = solicitante.nombre,
-        rol = Rol.desdeCorreo(solicitante.correo),
-        fotoUrl = solicitante.fotoUrl?.urlDelBackend(),
-        correo = solicitante.correo
-    ),
+    solicitante = solicitante.aSolicitante(),
     estado = EstadoSolicitud.desde(estado),
     comentarioAdmin = comentarioAdmin,
-    creadaEn = creadaEn?.let { runCatching { LocalDateTime.parse(it) }.getOrNull() }
+    creadaEn = creadaEn?.aFechaHora(),
+    tieneChat = tieneChat
 )
+
+/** Persona en una solicitud o en un chat (con foto o iniciales y si es Estudiante o Docente). */
+fun UsuarioDto.aSolicitante() = Solicitante(
+    id = id,
+    nombre = nombre,
+    rol = Rol.desdeCorreo(correo),
+    fotoUrl = fotoUrl?.urlDelBackend(),
+    correo = correo
+)
+
+fun MensajeDto.aModelo() = Mensaje(
+    id = id,
+    texto = texto,
+    autor = autor?.aSolicitante(),
+    creadoEn = creadoEn.aFechaHora() ?: LocalDateTime.MIN
+)
+
+fun ChatDto.aModelo() = Chat(
+    solicitud = solicitud.aResumen(),
+    abierto = estado == "ABIERTO",
+    ultimoMensaje = ultimoMensaje?.aModelo()
+)
+
+/** "2026-11-23T10:15:30.123" → LocalDateTime (null si viene con otro formato). */
+private fun String.aFechaHora(): LocalDateTime? = runCatching { LocalDateTime.parse(this) }.getOrNull()
 
 /** "10:00:00" → "10:00" */
 fun String.hhmm(): String = take(5)

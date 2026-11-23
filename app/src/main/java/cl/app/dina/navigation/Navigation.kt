@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import cl.app.dina.ui.components.TabBar
 import cl.app.dina.ui.views.ChatScreen
+import cl.app.dina.ui.views.ConversacionScreen
 import cl.app.dina.ui.views.InicioScreen
 import cl.app.dina.ui.views.AgregarEspacioScreen
 import cl.app.dina.ui.views.MenuScreen
@@ -33,6 +35,7 @@ import cl.app.dina.ui.views.SolicitudScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import cl.app.dina.ui.viewmodel.ReservaEspacio2ViewModel
+import cl.app.dina.ui.viewmodel.ConversacionViewModel
 import cl.app.dina.ui.viewmodel.SolicitudViewModel
 import java.time.LocalDate
 
@@ -84,6 +87,7 @@ fun AppNavigation() {
         RUTA_RESERVA_ESPACIO_2 -> Pestania.RESERVA_ESPACIO
         RUTA_SOLICITUD -> Pestania.INICIO
         RUTA_AGREGAR_ESPACIO -> Pestania.MENU
+        RUTA_CONVERSACION -> Pestania.CHAT
         else -> Pestania.entries.firstOrNull { it.ruta == rutaActual }
     }
 
@@ -108,7 +112,11 @@ fun AppNavigation() {
         NavHost(
             navController = navController,
             startDestination = Pestania.INICIO.ruta,
-            modifier = Modifier.padding(innerPadding)
+            // consumeWindowInsets: la barra de abajo ya está descontada, así el teclado (imePadding)
+            // en la conversación no deja un hueco del alto de la TabBar
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             composable(Pestania.INICIO.ruta) {
                 InicioScreen(
@@ -119,11 +127,11 @@ fun AppNavigation() {
             composable(
                 route = RUTA_SOLICITUD,
                 arguments = listOf(navArgument(SolicitudViewModel.ARG_SOLICITUD_ID) { type = NavType.LongType })
-            ) {
+            ) { entrada ->
+                val id = entrada.arguments?.getLong(SolicitudViewModel.ARG_SOLICITUD_ID) ?: 0
                 SolicitudScreen(
                     onVolver = { navController.popBackStack() },
-                    // El chat todavía es una pestaña provisoria
-                    onAbrirChat = { irAPestania(Pestania.CHAT) }
+                    onAbrirChat = { navController.navigate(rutaConversacion(id)) }
                 )
             }
             composable(Pestania.RESERVA_ESPACIO.ruta) {
@@ -142,7 +150,18 @@ fun AppNavigation() {
             ) {
                 ReservaEspacio2Screen(onVolver = { navController.popBackStack() })
             }
-            composable(Pestania.CHAT.ruta) { ChatScreen() }
+            composable(Pestania.CHAT.ruta) {
+                ChatScreen(onChatClick = { id -> navController.navigate(rutaConversacion(id)) })
+            }
+            composable(
+                route = RUTA_CONVERSACION,
+                arguments = listOf(navArgument(ConversacionViewModel.ARG_SOLICITUD_ID) { type = NavType.LongType })
+            ) {
+                ConversacionScreen(
+                    onVolver = { navController.popBackStack() },
+                    onVerSolicitud = { id -> navController.navigate(rutaSolicitud(id)) }
+                )
+            }
             composable(Pestania.NOTIFICACIONES.ruta) { NotificacionesScreen() }
             composable(Pestania.MENU.ruta) {
                 MenuScreen(onAgregarEspacio = { navController.navigate(RUTA_AGREGAR_ESPACIO) })
@@ -163,6 +182,11 @@ private fun rutaReservaEspacio2(espacioId: Long, fecha: LocalDate) = "reserva_es
 /** Detalle de una solicitud (se abre desde el Inicio del usuario y del administrador). */
 /** Formulario para agregar un espacio (solo admin, desde el Menú). */
 private const val RUTA_AGREGAR_ESPACIO = "agregar_espacio"
+
+/** Conversación del chat de una solicitud aprobada (desde Chat o desde el detalle de la solicitud). */
+private const val RUTA_CONVERSACION = "chat/{${ConversacionViewModel.ARG_SOLICITUD_ID}}"
+
+private fun rutaConversacion(solicitudId: Long) = "chat/$solicitudId"
 
 private const val RUTA_SOLICITUD = "solicitud/{${SolicitudViewModel.ARG_SOLICITUD_ID}}"
 

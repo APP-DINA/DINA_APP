@@ -1,6 +1,11 @@
 package cl.app.dina.data.remote
 
+import cl.app.dina.data.remote.dto.CancelarDto
+import cl.app.dina.data.remote.dto.ChatDetalleDto
+import cl.app.dina.data.remote.dto.ChatDto
 import cl.app.dina.data.remote.dto.CrearEspacioDto
+import cl.app.dina.data.remote.dto.EnviarMensajeDto
+import cl.app.dina.data.remote.dto.MensajeDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.DisponibilidadDto
 import cl.app.dina.data.remote.dto.EspacioDto
@@ -62,7 +67,26 @@ interface DinaApi {
 
     /** El usuario cancela su solicitud (pendiente, o aprobada que aún no comienza). */
     @PATCH("api/solicitudes/{id}/cancelar")
-    suspend fun cancelarSolicitud(@Path("id") id: Long): SolicitudDto
+    suspend fun cancelarSolicitud(@Path("id") id: Long, @Body body: CancelarDto): SolicitudDto
+
+    /** Solo ADMIN: cancela una reserva ya aprobada de otra persona (motivo obligatorio). */
+    @PATCH("api/admin/solicitudes/{id}/cancelar")
+    suspend fun cancelarReservaComoAdmin(@Path("id") id: Long, @Body body: CancelarDto): SolicitudDto
+
+    //Chat (uno por solicitud aprobada; {id} = id de la solicitud)
+    @GET("api/chats")
+    suspend fun chats(): List<ChatDto>
+
+    /** Con [despuesDe] > 0 trae solo los mensajes nuevos (la app pregunta cada 5 s). */
+    @GET("api/chats/{id}")
+    suspend fun chat(@Path("id") id: Long, @Query("despuesDe") despuesDe: Long): ChatDetalleDto
+
+    @POST("api/chats/{id}/mensajes")
+    suspend fun enviarMensaje(@Path("id") id: Long, @Body body: EnviarMensajeDto): MensajeDto
+
+    /** Solo ADMIN: pasa el chat a "Cerrados". */
+    @PATCH("api/chats/{id}/cerrar")
+    suspend fun cerrarChat(@Path("id") id: Long): ChatDto
 
     /** Solo ADMIN. Aprueba y rechaza automáticamente las pendientes que chocan con ella. */
     @PATCH("api/admin/solicitudes/{id}/aprobar")

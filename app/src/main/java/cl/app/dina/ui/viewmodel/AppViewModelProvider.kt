@@ -57,6 +57,20 @@ object AppViewModelProvider {
             )
         }
         initializer {
+            ChatViewModel(
+                sesionRepository = dinaApplication().container.sesionRepository,
+                chatRepository = dinaApplication().container.chatRepository
+            )
+        }
+        initializer {
+            ConversacionViewModel(
+                savedStateHandle = createSavedStateHandle(),
+                sesionRepository = dinaApplication().container.sesionRepository,
+                chatRepository = dinaApplication().container.chatRepository,
+                solicitudRepository = dinaApplication().container.solicitudRepository
+            )
+        }
+        initializer {
             AgregarEspacioViewModel(dinaApplication().container.espacioRepository)
         }
     }

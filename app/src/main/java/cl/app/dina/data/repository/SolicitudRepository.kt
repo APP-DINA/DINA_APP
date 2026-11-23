@@ -6,6 +6,7 @@ import cl.app.dina.data.model.NuevaSolicitud
 import cl.app.dina.data.model.SolicitudCreada
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.remote.DinaApi
+import cl.app.dina.data.remote.dto.CancelarDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.RechazarDto
 import cl.app.dina.data.remote.dto.aResumen
@@ -30,7 +31,10 @@ interface SolicitudRepository {
     suspend fun detalle(id: Long): SolicitudResumen
 
     /** El usuario cancela su solicitud. */
-    suspend fun cancelar(id: Long): SolicitudResumen
+    suspend fun cancelar(id: Long, motivo: String? = null): SolicitudResumen
+
+    /** Solo ADMIN: cancela una reserva ya aprobada; el [motivo] le llega al usuario. */
+    suspend fun cancelarComoAdmin(id: Long, motivo: String): SolicitudResumen
 
     /** Solo ADMIN. */
     suspend fun aprobar(id: Long): SolicitudResumen
@@ -78,12 +82,19 @@ class RemoteSolicitudRepository(private val api: DinaApi) : SolicitudRepository 
 
     override suspend fun detalle(id: Long) = api.solicitud(id).aResumen()
 
-    override suspend fun cancelar(id: Long) = api.cancelarSolicitud(id).aResumen()
+    override suspend fun cancelar(id: Long, motivo: String?) =
+        api.cancelarSolicitud(id, CancelarDto(motivo.limpio())).aResumen()
+
+    override suspend fun cancelarComoAdmin(id: Long, motivo: String) =
+        api.cancelarReservaComoAdmin(id, CancelarDto(motivo.limpio())).aResumen()
 
     override suspend fun aprobar(id: Long) = api.aprobarSolicitud(id).aResumen()
 
     override suspend fun rechazar(id: Long, motivo: String?) =
-        api.rechazarSolicitud(id, RechazarDto(motivo?.trim()?.takeIf { it.isNotEmpty() })).aResumen()
+        api.rechazarSolicitud(id, RechazarDto(motivo.limpio())).aResumen()
+
+    /** Texto opcional para el backend: sin espacios de sobra, o null si quedó vacío. */
+    private fun String?.limpio(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
     private companion object {
         const val PENDIENTE = "PENDIENTE"
