@@ -53,3 +53,6 @@ val SaludSecundario = Color(0xFF99D6EA)
 // Turismo
 val TurismoPrincipal = Color(0xFF00A499)
 val TurismoSecundario = Color(0xFF2AD2C9)
+
+// Acciones de salida o cancelación (botón rojo de volver). Rojo fijo: el "error" de Material 3
+val RojoAccion = Color(0xFFD32F2F)

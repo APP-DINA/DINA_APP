@@ -26,7 +26,12 @@ import cl.app.dina.ui.views.ChatScreen
 import cl.app.dina.ui.views.InicioScreen
 import cl.app.dina.ui.views.MenuScreen
 import cl.app.dina.ui.views.NotificacionesScreen
+import cl.app.dina.ui.views.ReservaEspacio2Screen
 import cl.app.dina.ui.views.ReservaEspacioScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import cl.app.dina.ui.viewmodel.ReservaEspacio2ViewModel
+import java.time.LocalDate
 
 /**
  * Punto de entrada de la UI: decide entre Login y la app según haya sesión guardada.
@@ -59,7 +64,10 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     val entradaActual by navController.currentBackStackEntryAsState()
-    val pestaniaActual = Pestania.entries.firstOrNull { it.ruta == entradaActual?.destination?.route }
+    val rutaActual = entradaActual?.destination?.route
+    // El formulario de reserva pertenece a la pestaña "Reservar": se mantiene marcada
+    val pestaniaActual = if (rutaActual == RUTA_RESERVA_ESPACIO_2) Pestania.RESERVA_ESPACIO
+    else Pestania.entries.firstOrNull { it.ruta == rutaActual }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -85,9 +93,19 @@ fun AppNavigation() {
             composable(Pestania.INICIO.ruta) { InicioScreen() }
             composable(Pestania.RESERVA_ESPACIO.ruta) {
                 ReservaEspacioScreen(
-                    // TODO: navegar a EspacioScreen (formulario de reserva) con espacio.id y fecha
-                    onEspacioClick = { _, _ -> }
+                    onEspacioClick = { espacio, fecha ->
+                        navController.navigate(rutaReservaEspacio2(espacio.id, fecha))
+                    }
                 )
+            }
+            composable(
+                route = RUTA_RESERVA_ESPACIO_2,
+                arguments = listOf(
+                    navArgument(ReservaEspacio2ViewModel.ARG_ESPACIO_ID) { type = NavType.LongType },
+                    navArgument(ReservaEspacio2ViewModel.ARG_FECHA) { type = NavType.StringType }
+                )
+            ) {
+                ReservaEspacio2Screen(onVolver = { navController.popBackStack() })
             }
             composable(Pestania.CHAT.ruta) { ChatScreen() }
             composable(Pestania.NOTIFICACIONES.ruta) { NotificacionesScreen() }
@@ -95,3 +113,9 @@ fun AppNavigation() {
         }
     }
 }
+
+/** Formulario de reserva: el espacio elegido en ReservaEspacio y el día ("AAAA-MM-DD"). */
+private const val RUTA_RESERVA_ESPACIO_2 =
+    "reserva_espacio_2/{${ReservaEspacio2ViewModel.ARG_ESPACIO_ID}}/{${ReservaEspacio2ViewModel.ARG_FECHA}}"
+
+private fun rutaReservaEspacio2(espacioId: Long, fecha: LocalDate) = "reserva_espacio_2/$espacioId/$fecha"

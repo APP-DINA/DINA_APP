@@ -1,6 +1,7 @@
 package cl.app.dina.ui.viewmodel
 
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -26,6 +27,13 @@ object AppViewModelProvider {
         }
         initializer {
             ReservaEspacioViewModel(dinaApplication().container.espacioRepository)
+        }
+        initializer {
+            ReservaEspacio2ViewModel(
+                savedStateHandle = createSavedStateHandle(),
+                espacioRepository = dinaApplication().container.espacioRepository,
+                solicitudRepository = dinaApplication().container.solicitudRepository
+            )
         }
         initializer {
             MenuViewModel(

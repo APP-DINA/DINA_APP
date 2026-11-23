@@ -8,13 +8,16 @@ import cl.app.dina.data.repository.AuthRepository
 import cl.app.dina.data.repository.EspacioRepository
 import cl.app.dina.data.repository.RemoteAuthRepository
 import cl.app.dina.data.repository.RemoteEspacioRepository
+import cl.app.dina.data.repository.RemoteSolicitudRepository
 import cl.app.dina.data.repository.SesionRepository
+import cl.app.dina.data.repository.SolicitudRepository
 
 /** Inyección de dependencias manual: el único lugar que crea los repositorios. */
 interface AppContainer {
     val authRepository: AuthRepository
     val sesionRepository: SesionRepository
     val espacioRepository: EspacioRepository
+    val solicitudRepository: SolicitudRepository
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -31,4 +34,6 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val authRepository: AuthRepository by lazy { RemoteAuthRepository(api) }
 
     override val espacioRepository: EspacioRepository by lazy { RemoteEspacioRepository(api) }
+
+    override val solicitudRepository: SolicitudRepository by lazy { RemoteSolicitudRepository(api) }
 }

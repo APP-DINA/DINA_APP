@@ -24,8 +24,6 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.app.dina.data.model.Rol
+import cl.app.dina.ui.components.BotonPrincipal
 import cl.app.dina.ui.theme.DINATheme
 import cl.app.dina.ui.viewmodel.AppViewModelProvider
 import cl.app.dina.ui.viewmodel.LoginUiState
@@ -197,26 +196,14 @@ private fun LoginContenido(
                 }
 
                 // ── Botón ───────────────────────────────────────────────
-                Button(
+                BotonPrincipal(
+                    texto = "Ingresar",
+                    cargando = state.cargando,
                     onClick = {
                         focusManager.clearFocus()
                         onIngresar()
-                    },
-                    enabled = !state.cargando,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                ) {
-                    if (state.cargando) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text("Ingresar")
                     }
-                }
+                )
 
                 Text(
                     text = "Cuentas permitidas: " + Rol.dominiosPermitidos.joinToString(" · ") { "@$it" },

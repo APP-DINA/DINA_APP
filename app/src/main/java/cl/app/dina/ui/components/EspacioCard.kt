@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -52,11 +53,13 @@ fun colorEscuela(codigo: String?): Color =
 val Espacio.titulo: String get() = if (nombre.endsWith(codigo)) codigo else nombre
 
 /**
- * Tarjeta de un espacio en el listado de ReservaEspacio.
- * La banda de la izquierda tiene el color de la escuela de uso principal (gris si es de uso general).
+ * Tarjeta de un espacio. La banda de la izquierda tiene el color de la escuela de uso principal
+ * (gris si es de uso general).
+ * Con [onClick] es una opción tocable con flecha (listado de ReservaEspacio); con null es solo
+ * un resumen del espacio (encabezado de ReservaEspacio2).
  */
 @Composable
-fun EspacioCard(espacio: Espacio, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun EspacioCard(espacio: Espacio, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val escuela = escuelaDe(espacio.escuela)
     val banda = colorEscuela(espacio.escuela)
     val descripcion = buildString {
@@ -66,13 +69,11 @@ fun EspacioCard(espacio: Espacio, onClick: () -> Unit, modifier: Modifier = Modi
         escuela?.let { append(", escuela ").append(it.nombre) }
     }
 
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) { contentDescription = descripcion }
-    ) {
+    val colores = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    val modificador = modifier
+        .fillMaxWidth()
+        .semantics(mergeDescendants = true) { contentDescription = descripcion }
+    val contenido: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.height(IntrinsicSize.Min)) {
             // Banda de la escuela
             Box(
@@ -125,14 +126,19 @@ fun EspacioCard(espacio: Espacio, onClick: () -> Unit, modifier: Modifier = Modi
                         }
                     }
                 }
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (onClick != null) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
+
+    if (onClick != null) Card(onClick = onClick, colors = colores, modifier = modificador, content = contenido)
+    else Card(colors = colores, modifier = modificador, content = contenido)
 }
 
 @Composable

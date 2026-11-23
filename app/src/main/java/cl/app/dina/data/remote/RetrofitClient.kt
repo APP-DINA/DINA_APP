@@ -45,5 +45,6 @@ fun Throwable.aMensaje(): String = when (this) {
         mensaje ?: "El servidor respondió con un error (${code()})"
     }
     is IOException -> "No se pudo conectar con el servidor. Revisa tu conexión"
+    is NoSuchElementException -> message ?: "No se encontró lo que buscabas"
     else -> "Ocurrió un error inesperado"
 }
