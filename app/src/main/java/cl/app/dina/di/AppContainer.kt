@@ -5,13 +5,16 @@ import cl.app.dina.data.local.sesionDataStore
 import cl.app.dina.data.remote.DinaApi
 import cl.app.dina.data.remote.RetrofitClient
 import cl.app.dina.data.repository.AuthRepository
+import cl.app.dina.data.repository.EspacioRepository
 import cl.app.dina.data.repository.RemoteAuthRepository
+import cl.app.dina.data.repository.RemoteEspacioRepository
 import cl.app.dina.data.repository.SesionRepository
 
 /** Inyección de dependencias manual: el único lugar que crea los repositorios. */
 interface AppContainer {
     val authRepository: AuthRepository
     val sesionRepository: SesionRepository
+    val espacioRepository: EspacioRepository
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -26,4 +29,6 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     // Para probar sin backend: FakeAuthRepository()
     override val authRepository: AuthRepository by lazy { RemoteAuthRepository(api) }
+
+    override val espacioRepository: EspacioRepository by lazy { RemoteEspacioRepository(api) }
 }

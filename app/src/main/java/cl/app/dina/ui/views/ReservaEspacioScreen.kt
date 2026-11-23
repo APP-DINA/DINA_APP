@@ -1,33 +1,461 @@
 package cl.app.dina.ui.views
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import cl.app.dina.data.model.Espacio
+import cl.app.dina.data.model.TipoEspacio
+import cl.app.dina.ui.components.CargandoView
+import cl.app.dina.ui.components.EspacioCard
+import cl.app.dina.ui.components.MensajeView
+import cl.app.dina.ui.components.colorEscuela
+import cl.app.dina.ui.components.nombreEscuela
 import cl.app.dina.ui.theme.DINATheme
+import cl.app.dina.ui.viewmodel.AppViewModelProvider
+import cl.app.dina.ui.viewmodel.Calendario
+import cl.app.dina.ui.viewmodel.EstadoCarga
+import cl.app.dina.ui.viewmodel.FiltroEscuela
+import cl.app.dina.ui.viewmodel.GrupoEdificio
+import cl.app.dina.ui.viewmodel.ReservaEspacioUiState
+import cl.app.dina.ui.viewmodel.ReservaEspacioViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+
+class ReservaEspacioAcciones(
+    val onBusquedaChange: (String) -> Unit = {},
+    val onTipoChange: (TipoEspacio?) -> Unit = {},
+    val onEscuelaChange: (FiltroEscuela?) -> Unit = {},
+    val onFechaChange: (LocalDate) -> Unit = {},
+    val onLimpiarFiltros: () -> Unit = {},
+    val onReintentar: () -> Unit = {},
+    val onRefrescar: () -> Unit = {},
+    val onEspacioClick: (Espacio) -> Unit = {}
+)
+
+/** Catalogo de espacios: buscador, filtros (menus), día de la reserva y listado por edificio. */
+@Composable
+fun ReservaEspacioScreen(
+    onEspacioClick: (Espacio, LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ReservaEspacioViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val acciones = ReservaEspacioAcciones(
+        onBusquedaChange = viewModel::onBusquedaChange,
+        onTipoChange = viewModel::seleccionarTipo,
+        onEscuelaChange = viewModel::seleccionarEscuela,
+        onFechaChange = viewModel::seleccionarFecha,
+        onLimpiarFiltros = viewModel::limpiarFiltros,
+        onReintentar = viewModel::reintentar,
+        onRefrescar = viewModel::refrescar,
+        onEspacioClick = { onEspacioClick(it, state.calendario.fecha) }
+    )
+    ReservaEspacioContenido(state, acciones, modifier)
+}
+
+/** Solo dibuja: recibe el estado y avisa lo que hace el usuario. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReservaEspacioContenido(
+    state: ReservaEspacioUiState,
+    acciones: ReservaEspacioAcciones,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier.fillMaxSize()) {
+        Text(
+            "Reserva de Espacio",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+        )
+
+        when (val carga = state.carga) {
+            EstadoCarga.Cargando -> CargandoView()
+            is EstadoCarga.Error -> MensajeView(
+                titulo = "No se pudieron cargar los espacios",
+                detalle = carga.mensaje,
+                textoBoton = "Reintentar",
+                onBoton = acciones.onReintentar
+            )
+            EstadoCarga.Listo -> {
+                Buscador(state.filtros.busqueda, acciones.onBusquedaChange)
+                Filtros(state, acciones)
+                SelectorDia(state.calendario, state.filtros.activos, acciones)
+                PullToRefreshBox(
+                    isRefreshing = state.refrescando,
+                    onRefresh = acciones.onRefrescar,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (state.grupos.isEmpty()) {
+                        MensajeView(
+                            titulo = "No hay espacios con esa búsqueda",
+                            detalle = "Prueba con otro nombre o quita algún filtro.",
+                            textoBoton = if (state.filtros.activos) "Limpiar filtros" else null,
+                            onBoton = acciones.onLimpiarFiltros
+                        )
+                    } else {
+                        ListaEspacios(state.grupos, acciones.onEspacioClick)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Buscador */
+@Composable
+private fun Buscador(texto: String, onChange: (String) -> Unit) {
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = texto,
+        onValueChange = onChange,
+        placeholder = { Text("Buscar por nombre: S11, Set de TV…") },
+        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+        trailingIcon = {
+            if (texto.isNotEmpty()) {
+                IconButton(onClick = { onChange("") }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Borrar búsqueda")
+                }
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+    )
+}
+
+/** Filtros en menus desplegables */
+@Composable
+private fun Filtros(state: ReservaEspacioUiState, acciones: ReservaEspacioAcciones) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MenuFiltro(
+            etiqueta = "Tipo",
+            textoTodos = "Todos",
+            seleccion = state.filtros.tipo,
+            opciones = state.tiposDisponibles,
+            texto = { it.etiqueta },
+            onSeleccion = acciones.onTipoChange,
+            modifier = Modifier.weight(1f)
+        )
+        MenuFiltro(
+            etiqueta = "Escuela",
+            textoTodos = "Todas",
+            seleccion = state.filtros.escuela,
+            opciones = state.escuelasDisponibles,
+            texto = { nombreEscuela(it.codigo) },
+            color = { colorEscuela(it.codigo) },
+            onSeleccion = acciones.onEscuelaChange,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/** Menú desplegable de Material 3 (ExposedDropdownMenuBox) para un filtro. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T : Any> MenuFiltro(
+    etiqueta: String,
+    textoTodos: String,
+    seleccion: T?,
+    opciones: List<T>,
+    texto: (T) -> String,
+    onSeleccion: (T?) -> Unit,
+    modifier: Modifier = Modifier,
+    color: (@Composable (T) -> Color)? = null
+) {
+    var abierto by remember { mutableStateOf(false) }
+
+    // Punto de color de la opción; espacio vacío para "Todos"; nada si el menú no usa colores.
+    val punto: (T?) -> (@Composable () -> Unit)? = { opcion ->
+        color?.let { colorDe -> { PuntoColor(opcion?.let { colorDe(it) }) } }
+    }
+
+    ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }, modifier = modifier) {
+        OutlinedTextField(
+            value = seleccion?.let(texto) ?: textoTodos,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(etiqueta) },
+            leadingIcon = seleccion?.let { punto(it) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = abierto) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            (listOf(null) + opciones).forEach { opcion ->
+                DropdownMenuItem(
+                    text = { Text(opcion?.let(texto) ?: textoTodos) },
+                    leadingIcon = punto(opcion),
+                    onClick = {
+                        onSeleccion(opcion)
+                        abierto = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                )
+            }
+        }
+    }
+}
 
 @Composable
-fun ReservaEspacioScreen(modifier: Modifier = Modifier) {
+private fun PuntoColor(color: Color?) {
     Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        Modifier
+            .size(10.dp)
+            .background(color ?: Color.Transparent, CircleShape)
+    )
+}
+
+// Día de la reserva: carrusel de 7 días + calendario
+private val MESES = listOf(
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+)
+private val DIAS_SEMANA = listOf("Lun.", "Mar.", "Mié.", "Jue.", "Vie.", "Sáb.", "Dom.")
+
+private val LocalDate.nombreMes: String get() = MESES[monthValue - 1]
+private val LocalDate.diaCorto: String get() = "${DIAS_SEMANA[dayOfWeek.value - 1]} $dayOfMonth"
+
+@Composable
+private fun SelectorDia(calendario: Calendario, hayFiltros: Boolean, acciones: ReservaEspacioAcciones) {
+    var mostrarCalendario by rememberSaveable { mutableStateOf(false) }
+
+    // Mes a la izquierda; a la derecha: Limpiar filtros, Hoy y el calendario (los dos primeros solo si aplican)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Reserva de Espacio",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            "${calendario.fecha.nombreMes} ${calendario.fecha.year}",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
         )
+        if (hayFiltros) {
+            TextButton(onClick = acciones.onLimpiarFiltros) { Text("Limpiar filtros") }
+        }
+        if (calendario.lejosDeHoy) {
+            TextButton(onClick = { acciones.onFechaChange(calendario.hoy) }) { Text("Hoy") }
+        }
+        IconButton(onClick = { mostrarCalendario = true }) {
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = "Elegir fecha en el calendario")
+        }
+    }
+
+    // ( Hoy )  ( Mar. 24 )  ( Mié. 25 ) ... hasta una semana
+    val dias = calendario.diasCarrusel
+    val listaDias = rememberLazyListState()
+    LaunchedEffect(dias.first()) { listaDias.scrollToItem(0) }
+    LazyRow(
+        state = listaDias,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier.padding(bottom = 4.dp)
+    ) {
+        items(dias, key = { it.toEpochDay() }) { dia ->
+            ChipDia(
+                dia = dia,
+                esHoy = dia == calendario.hoy,
+                seleccionado = dia == calendario.fecha,
+                onClick = { acciones.onFechaChange(dia) }
+            )
+        }
+    }
+
+    if (mostrarCalendario) {
+        CalendarioDialog(
+            calendario = calendario,
+            onAceptar = {
+                acciones.onFechaChange(it)
+                mostrarCalendario = false
+            },
+            onCancelar = { mostrarCalendario = false }
+        )
+    }
+}
+
+@Composable
+private fun ChipDia(dia: LocalDate, esHoy: Boolean, seleccionado: Boolean, onClick: () -> Unit) {
+    val colores = MaterialTheme.colorScheme
+    val descripcion = (if (esHoy) "Hoy, " else "") + "${dia.diaCorto} de ${dia.nombreMes}"
+
+    Surface(
+        shape = CircleShape,
+        color = if (seleccionado) colores.primaryContainer else colores.surfaceContainerHigh,
+        contentColor = if (seleccionado) colores.onPrimaryContainer else colores.onSurface,
+        modifier = Modifier
+            .height(40.dp)
+            .selectable(selected = seleccionado, onClick = onClick, role = Role.Tab)
+            .semantics { contentDescription = descripcion }
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 18.dp)) {
+            Text(
+                if (esHoy) "Hoy" else dia.diaCorto,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/** Selector de fechas de Material 3 (DatePickerDialog).
+ *  Solo deja elegir desde hoy hacia delante el resto aparece deshabilitado.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CalendarioDialog(
+    calendario: Calendario,
+    onAceptar: (LocalDate) -> Unit,
+    onCancelar: () -> Unit
+) {
+    val anios = calendario.hoy.year..calendario.fechaMaxima.year
+    val estadoCalendario = rememberDatePickerState(
+        initialSelectedDateMillis = calendario.fecha.aMillisUtc(),
+        yearRange = anios,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = calendario.permite(utcTimeMillis.aFechaUtc())
+
+            override fun isSelectableYear(year: Int) = year in anios
+        }
+    )
+    val elegida = estadoCalendario.selectedDateMillis
+    DatePickerDialog(
+        onDismissRequest = onCancelar,
+        confirmButton = {
+            TextButton(onClick = { elegida?.let { onAceptar(it.aFechaUtc()) } }, enabled = elegida != null) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = { TextButton(onClick = onCancelar) { Text("Cancelar") } }
+    ) {
+        DatePicker(state = estadoCalendario)
+    }
+}
+
+private fun LocalDate.aMillisUtc(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.aFechaUtc(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+
+/** Listado */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ListaEspacios(grupos: List<GrupoEdificio>, onEspacioClick: (Espacio) -> Unit) {
+    LazyColumn(
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        grupos.forEach { grupo ->
+            stickyHeader(key = "edificio-${grupo.edificioNombre}") {
+                Text(
+                    "${grupo.edificioNombre} · ${grupo.espacios.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(top = 12.dp, bottom = 4.dp)
+                )
+            }
+            items(grupo.espacios, key = { it.id }) { espacio ->
+                EspacioCard(espacio = espacio, onClick = { onEspacioClick(espacio) })
+            }
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun ReservaEspacioScreenPreview() {
+    val hoy = LocalDate.now()
+    val espacios = listOf(
+        Espacio(1, "S11", "Sala S11", "NORTE", "Edificio Norte", 1, TipoEspacio.SALA, 35, null, true, false, false),
+        Espacio(2, "SET-TV", "Set de TV", "NORTE", "Edificio Norte", 2, TipoEspacio.ESTUDIO, 20, "COMUNICACION", false, true, true),
+        Espacio(3, "LC1", "Laboratorio de Computación 1", "CTI", "Edificio Tecnológico CTI", 2, TipoEspacio.LABORATORIO, 30, "INFORMATICA", true, true, true)
+    )
     DINATheme {
-        ReservaEspacioScreen()
+        ReservaEspacioContenido(
+            state = ReservaEspacioUiState(
+                carga = EstadoCarga.Listo,
+                calendario = Calendario(hoy).elegir(hoy.plusDays(1)),
+                tiposDisponibles = espacios.map { it.tipo }.distinct(),
+                escuelasDisponibles = listOf(FiltroEscuela.De("COMUNICACION"), FiltroEscuela.De("INFORMATICA"), FiltroEscuela.UsoGeneral),
+                grupos = espacios.groupBy { it.edificioNombre }.map { GrupoEdificio(it.key, it.value) }
+            ),
+            acciones = ReservaEspacioAcciones()
+        )
     }
 }

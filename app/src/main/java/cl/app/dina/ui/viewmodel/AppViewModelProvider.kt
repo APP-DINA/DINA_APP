@@ -25,6 +25,9 @@ object AppViewModelProvider {
             )
         }
         initializer {
+            ReservaEspacioViewModel(dinaApplication().container.espacioRepository)
+        }
+        initializer {
             MenuViewModel(
                 sesionRepository = dinaApplication().container.sesionRepository,
                 authRepository = dinaApplication().container.authRepository

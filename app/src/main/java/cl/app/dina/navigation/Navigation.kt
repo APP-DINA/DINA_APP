@@ -83,7 +83,12 @@ fun AppNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Pestania.INICIO.ruta) { InicioScreen() }
-            composable(Pestania.RESERVA_ESPACIO.ruta) { ReservaEspacioScreen() }
+            composable(Pestania.RESERVA_ESPACIO.ruta) {
+                ReservaEspacioScreen(
+                    // TODO: navegar a EspacioScreen (formulario de reserva) con espacio.id y fecha
+                    onEspacioClick = { _, _ -> }
+                )
+            }
             composable(Pestania.CHAT.ruta) { ChatScreen() }
             composable(Pestania.NOTIFICACIONES.ruta) { NotificacionesScreen() }
             composable(Pestania.MENU.ruta) { MenuScreen() }

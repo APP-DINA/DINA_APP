@@ -1,5 +1,6 @@
 package cl.app.dina.data.remote
 
+import cl.app.dina.data.remote.dto.EspacioDto
 import cl.app.dina.data.remote.dto.LoginRequestDto
 import cl.app.dina.data.remote.dto.LoginResponseDto
 import cl.app.dina.data.remote.dto.UsuarioDto
@@ -21,4 +22,8 @@ interface DinaApi {
 
     @POST("api/auth/logout")
     suspend fun logout()
+
+    /** Catálogo completo; la búsqueda y los filtros se hacen en la app. */
+    @GET("api/espacios")
+    suspend fun espacios(): List<EspacioDto>
 }
