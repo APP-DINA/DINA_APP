@@ -1,3 +1,7 @@
+import java.io.ByteArrayOutputStream
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -21,10 +25,22 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Backend local (dina_backend en tu PC). Antes de abrir la app, en una terminal:
+            //     adb reverse tcp:8080 tcp:8080
+            // Así 127.0.0.1:8080 del emulador/teléfono USB llega a tu PC. No se usa 10.0.2.2 porque
+            // Android 17 bloquea la red local (10.x, 192.168.x) sin el permiso ACCESS_LOCAL_NETWORK.
+            buildConfigField("String", "API_BASE_URL", "\"http://127.0.0.1:8080/\"")
+            // El backend local no usa HTTPS: se permite HTTP solo en debug
+            manifestPlaceholders["permitirHttp"] = "true"
+        }
         release {
             optimization {
                 enable = false
             }
+            // TODO: URL del backend publicado (EC2), idealmente con HTTPS
+            buildConfigField("String", "API_BASE_URL", "\"http://127.0.0.1:8080/\"")
+            manifestPlaceholders["permitirHttp"] = "false"
         }
     }
     compileOptions {
@@ -33,6 +49,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -79,4 +96,65 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+// ── Backend local: adb reverse automático ────────────────────────────────────
+// En debug la app llama a http://127.0.0.1:8080/ (ver API_BASE_URL). Esta tarea redirige ese
+// puerto de cada emulador/teléfono conectado al 8080 de tu PC, donde corre dina_backend.
+// Se ejecuta sola al compilar o instalar la versión debug (también con el botón Run).
+// Sin dispositivos conectados no hace nada y no falla el build.
+abstract class AdbReverseTask : DefaultTask() {
+    @get:InputFile
+    abstract val adb: RegularFileProperty
+
+    @get:Input
+    abstract val puerto: Property<Int>
+
+    @get:Inject
+    abstract val exec: ExecOperations
+
+    @TaskAction
+    fun redirigir() {
+        val adbPath = adb.get().asFile.absolutePath
+        val salida = ByteArrayOutputStream()
+        val lista = exec.exec {
+            commandLine(adbPath, "devices")
+            standardOutput = salida
+            isIgnoreExitValue = true
+        }
+        if (lista.exitValue != 0) {
+            logger.warn("adb reverse: no se pudo ejecutar adb")
+            return
+        }
+        val dispositivos = salida.toString().lines()
+            .drop(1)
+            .map { it.trim().split(Regex("""\s+""")) }
+            .filter { it.size >= 2 && it[1] == "device" }
+            .map { it[0] }
+        if (dispositivos.isEmpty()) {
+            logger.lifecycle("adb reverse: no hay dispositivos conectados, se omite")
+            return
+        }
+        val regla = "tcp:${puerto.get()}"
+        dispositivos.forEach { serial ->
+            val r = exec.exec {
+                commandLine(adbPath, "-s", serial, "reverse", regla, regla)
+                isIgnoreExitValue = true
+            }
+            if (r.exitValue == 0) logger.lifecycle("adb reverse: $serial $regla → PC $regla")
+            else logger.warn("adb reverse: falló en $serial")
+        }
+    }
+}
+
+val adbReverseDebug = tasks.register<AdbReverseTask>("adbReverseDebug") {
+    group = "dina"
+    description = "Redirige el puerto 8080 de los dispositivos conectados al backend local"
+    adb.set(androidComponents.sdkComponents.adb)
+    puerto.set(8080)
+    // Siempre se ejecuta: el emulador pudo reiniciarse desde el último build
+    outputs.upToDateWhen { false }
+}
+
+tasks.configureEach {
+    if (name == "assembleDebug" || name == "installDebug") finalizedBy(adbReverseDebug)
 }

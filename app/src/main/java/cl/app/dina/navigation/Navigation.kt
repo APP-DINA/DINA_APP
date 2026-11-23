@@ -1,8 +1,18 @@
 package cl.app.dina.navigation
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import cl.app.dina.ui.viewmodel.AppViewModelProvider
+import cl.app.dina.ui.viewmodel.EstadoSesion
+import cl.app.dina.ui.viewmodel.SesionViewModel
+import cl.app.dina.ui.views.LoginScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -18,6 +28,32 @@ import cl.app.dina.ui.views.MenuScreen
 import cl.app.dina.ui.views.NotificacionesScreen
 import cl.app.dina.ui.views.ReservaEspacioScreen
 
+/**
+ * Punto de entrada de la UI: decide entre Login y la app según haya sesión guardada.
+ * No usa NavController: al iniciar o cerrar sesión cambia el estado y se redibuja solo.
+ * Así "atrás" desde la app nunca vuelve al Login, y al cerrar sesión no queda historial.
+ */
+@Composable
+fun NavegacionRaiz(
+    sesionViewModel: SesionViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val estado by sesionViewModel.estado.collectAsStateWithLifecycle()
+
+    Crossfade(targetState = estado, label = "sesion") { e ->
+        when (e) {
+            // Mientras se lee el teléfono se muestra solo el fondo (sin parpadeo de Login)
+            EstadoSesion.Cargando -> Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
+            EstadoSesion.SinSesion -> LoginScreen()
+            is EstadoSesion.ConSesion -> AppNavigation()
+        }
+    }
+}
+
+/** App con sesión iniciada: TabBar abajo y las 5 pantallas. */
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
