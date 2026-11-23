@@ -4,16 +4,19 @@ import android.content.Context
 import cl.app.dina.data.local.preferenciasDataStore
 import cl.app.dina.data.local.sesionDataStore
 import cl.app.dina.data.remote.DinaApi
+import cl.app.dina.data.remote.FeriadosApi
 import cl.app.dina.data.remote.RetrofitClient
 import cl.app.dina.data.repository.AuthRepository
 import cl.app.dina.data.repository.ChatRepository
 import cl.app.dina.data.repository.EspacioRepository
+import cl.app.dina.data.repository.FeriadoRepository
 import cl.app.dina.data.repository.NotificacionRepository
 import cl.app.dina.data.repository.PerfilRepository
 import cl.app.dina.data.repository.PreferenciasRepository
 import cl.app.dina.data.repository.RemoteAuthRepository
 import cl.app.dina.data.repository.RemoteChatRepository
 import cl.app.dina.data.repository.RemoteEspacioRepository
+import cl.app.dina.data.repository.RemoteFeriadoRepository
 import cl.app.dina.data.repository.RemoteNotificacionRepository
 import cl.app.dina.data.repository.RemotePerfilRepository
 import cl.app.dina.data.repository.RemoteSolicitudRepository
@@ -31,6 +34,9 @@ interface AppContainer {
     val preferenciasRepository: PreferenciasRepository
     val chatRepository: ChatRepository
     val notificacionRepository: NotificacionRepository
+
+    /** API externa (Nager.Date): feriados de Chile. */
+    val feriadoRepository: FeriadoRepository
 
     /** Cliente HTTP con el token de sesión: lo usa también Coil para cargar las fotos de perfil. */
     val okHttpClient: OkHttpClient
@@ -62,6 +68,9 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val chatRepository: ChatRepository by lazy { RemoteChatRepository(api) }
 
     override val notificacionRepository: NotificacionRepository by lazy { RemoteNotificacionRepository(api) }
+
+    /** API externa de feriados: cliente propio, sin el token de dina_backend. */
+    override val feriadoRepository: FeriadoRepository by lazy { RemoteFeriadoRepository(FeriadosApi.crear()) }
 
     override val perfilRepository: PerfilRepository by lazy {
         RemotePerfilRepository(api, sesionRepository, appContext.contentResolver)

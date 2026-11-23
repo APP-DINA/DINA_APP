@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import cl.app.dina.data.model.BloqueDia
 import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoBloque
+import cl.app.dina.data.model.Feriado
 import cl.app.dina.data.model.NuevaSolicitud
 import cl.app.dina.data.model.SolicitudCreada
 import cl.app.dina.data.remote.ErrorDelBackend
 import cl.app.dina.data.remote.aMensaje
 import cl.app.dina.data.repository.EspacioRepository
+import cl.app.dina.data.repository.FeriadoRepository
 import cl.app.dina.data.repository.SolicitudRepository
 import java.time.LocalDate
 import kotlinx.coroutines.Job
@@ -42,7 +44,9 @@ data class ReservaEspacio2UiState(
     val errorGeneral: String? = null,
     /** Ya tiene otra solicitud a esa hora: el mensaje del backend para el diálogo "¿Solicitar igual?". */
     val avisoCruce: String? = null,
-    val enviando: Boolean = false
+    val enviando: Boolean = false,
+    /** El día elegido es feriado (API externa Nager.Date); null si no lo es o si la API no respondió. */
+    val feriado: Feriado? = null
 ) {
     /** La sede no atiende ese día (domingo) o ya pasaron todos los bloques. */
     val diaSinBloques: Boolean
@@ -66,7 +70,8 @@ sealed interface ReservaEspacio2Evento {
 class ReservaEspacio2ViewModel(
     savedStateHandle: SavedStateHandle,
     private val espacioRepository: EspacioRepository,
-    private val solicitudRepository: SolicitudRepository
+    private val solicitudRepository: SolicitudRepository,
+    private val feriadoRepository: FeriadoRepository
 ) : ViewModel() {
 
     private val espacioId: Long = checkNotNull(savedStateHandle[ARG_ESPACIO_ID])
@@ -84,6 +89,7 @@ class ReservaEspacio2ViewModel(
     val eventos: Flow<ReservaEspacio2Evento> = _eventos.receiveAsFlow()
 
     private var trabajoBloques: Job? = null
+    private var trabajoFeriado: Job? = null
 
     init {
         viewModelScope.launch {
@@ -92,6 +98,7 @@ class ReservaEspacio2ViewModel(
                 .onFailure { e -> _uiState.update { it.copy(errorEspacio = e.aMensaje()) } }
         }
         cargarBloques()
+        cargarFeriado()
     }
 
     // Día y bloques
@@ -101,6 +108,21 @@ class ReservaEspacio2ViewModel(
             it.copy(calendario = it.calendario.alDia().elegir(dia), seleccion = emptyList(), errorBloques = null)
         }
         cargarBloques()
+        cargarFeriado()
+    }
+
+    /**
+     * Pregunta a la API externa si el día elegido es feriado. Solo informa: si la API falla, la
+     * reserva sigue igual (no depende de ella) y simplemente no se muestra el aviso.
+     */
+    private fun cargarFeriado() {
+        trabajoFeriado?.cancel()
+        val fecha = _uiState.value.calendario.fecha
+        _uiState.update { it.copy(feriado = null) }
+        trabajoFeriado = viewModelScope.launch {
+            intentar { feriadoRepository.feriadoEn(fecha) }
+                .onSuccess { feriado -> _uiState.update { it.copy(feriado = feriado) } }
+        }
     }
 
     fun onBloqueClick(bloque: BloqueDia) = _uiState.update {

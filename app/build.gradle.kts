@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream
+import java.util.Properties
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
@@ -6,10 +7,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
 }
 
 /** dina_backend publicado en AWS EC2 (Elastic IP de la instancia DINA_BACKEND). */
 val URL_BACKEND_AWS = "http://34.201.191.7:8080/"
+
+/** Datos de la firma release (keystore.properties, en la raíz del proyecto). */
+val firma = Properties().apply {
+    val archivo = rootProject.file("keystore.properties")
+    if (archivo.exists()) archivo.inputStream().use { load(it) }
+}
 
 android {
     namespace = "cl.app.dina"
@@ -25,6 +33,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Firma del APK release con la llave keystore/dina-release.jks (ver README → "APK firmado")
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(firma.getProperty("storeFile", "keystore/dina-release.jks"))
+            storePassword = firma.getProperty("storePassword")
+            keyAlias = firma.getProperty("keyAlias")
+            keyPassword = firma.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
@@ -55,6 +73,7 @@ android {
             optimization {
                 enable = false
             }
+            signingConfig = signingConfigs.getByName("release")
             // Backend publicado en AWS EC2 (sin HTTPS por ahora, por eso se permite HTTP)
             buildConfigField("String", "API_BASE_URL", "\"$URL_BACKEND_AWS\"")
             manifestPlaceholders["permitirHttp"] = "true"
@@ -110,6 +129,8 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -117,7 +138,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
-// ── Backend local: adb reverse automático ────────────────────────────────────
+// Backend local: adb reverse automático
 // En debug la app llama a http://127.0.0.1:8080/ (ver API_BASE_URL). Esta tarea redirige ese
 // puerto de cada emulador/teléfono conectado al 8080 de tu PC, donde corre dina_backend.
 // Se ejecuta sola al compilar o instalar la versión debug (también con el botón Run).
@@ -177,4 +198,32 @@ val adbReverseDebug = tasks.register<AdbReverseTask>("adbReverseDebug") {
 
 tasks.configureEach {
     if (name == "assembleDebug" || name == "installDebug") finalizedBy(adbReverseDebug)
+}
+
+// ── Cobertura de pruebas unitarias (Kover) ───────────────────────────────────
+// Mide la lógica de la app: ViewModels, repositorios y modelos. Se excluye lo que no es lógica
+// (pantallas Compose, tema, DTOs, la fábrica de ViewModels y la inyección de dependencias).
+// Reporte: ./gradlew :app:koverHtmlReportDebug → app/build/reports/kover/htmlDebug/index.html
+// Verificación (falla bajo 80 %): ./gradlew :app:koverVerifyDebug
+kover {
+    reports {
+        filters {
+            includes {
+                packages("cl.app.dina.ui.viewmodel", "cl.app.dina.data.repository", "cl.app.dina.data.model")
+            }
+            excludes {
+                classes(
+                    "cl.app.dina.ui.viewmodel.AppViewModelProviderKt*",
+                    "cl.app.dina.ui.viewmodel.AppViewModelProvider*",
+                    // Recorta y comprime la foto con Bitmap/ImageDecoder de Android: no corre en la JVM
+                    "cl.app.dina.data.repository.RemotePerfilRepository*"
+                )
+            }
+        }
+        verify {
+            rule {
+                minBound(80)
+            }
+        }
+    }
 }

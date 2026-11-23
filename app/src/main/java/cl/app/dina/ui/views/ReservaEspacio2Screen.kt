@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.app.dina.data.model.BloqueDia
 import cl.app.dina.data.model.Espacio
 import cl.app.dina.data.model.EstadoBloque
+import cl.app.dina.data.model.Feriado
 import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.ui.components.BotonPrincipal
 import cl.app.dina.ui.components.CampoFormulario
@@ -154,6 +158,7 @@ private fun ReservaEspacio2Contenido(
             else -> {
                 EspacioCard(espacio = espacio, onClick = null, modifier = Modifier.padding(horizontal = 16.dp))
                 SelectorDia(state.calendario, acciones.onFechaChange, modifier = Modifier.padding(top = 8.dp))
+                state.feriado?.let { AvisoFeriado(it) }
                 SeccionBloques(state, acciones)
                 Formulario(state, espacio, acciones)
             }
@@ -161,8 +166,41 @@ private fun ReservaEspacio2Contenido(
     }
 }
 
-// ── Bloques del día ─────────────────────────────────────────────────────────
+// Aviso de feriado (API externa)
+/** El día elegido es feriado según Nager.Date: solo avisa, la reserva sigue disponible. */
+@Composable
+private fun AvisoFeriado(feriado: Feriado) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Icon(Icons.Outlined.Celebration, contentDescription = null)
+            Column {
+                Text("Feriado: ${feriado.nombre}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    "Es feriado nacional. Confirma que la sede esté abierta antes de reservar.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Fuente: Nager.Date (feriados de Chile)",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.alpha(0.7f)
+                )
+            }
+        }
+    }
+}
 
+// Bloques del dia
 @Composable
 private fun SeccionBloques(state: ReservaEspacio2UiState, acciones: ReservaEspacio2Acciones) {
     Column(
@@ -256,8 +294,7 @@ private fun ChipBloque(bloque: BloqueDia, seleccionado: Boolean, onClick: () -> 
     }
 }
 
-// ── Asistentes, motivo y botón Solicitar ────────────────────────────────────
-
+// Asistentes, motivo y botón Solicitar
 @Composable
 private fun Formulario(state: ReservaEspacio2UiState, espacio: Espacio, acciones: ReservaEspacio2Acciones) {
     Column(
@@ -310,7 +347,8 @@ private fun ReservaEspacio2ScreenPreview() {
                 cargaBloques = EstadoCarga.Listo,
                 bloques = bloques,
                 seleccion = bloques.subList(2, 4),
-                asistentes = "20"
+                asistentes = "20",
+                feriado = Feriado(hoy.plusDays(1), "Día de Prueba")
             ),
             acciones = ReservaEspacio2Acciones()
         )
