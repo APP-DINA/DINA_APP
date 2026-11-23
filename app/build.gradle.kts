@@ -34,6 +34,19 @@ android {
             // El backend local no usa HTTPS: se permite HTTP solo en debug
             manifestPlaceholders["permitirHttp"] = "true"
         }
+        // Igual que debug, pero contra el backend publicado en AWS EC2 (Elastic IP). Se instala aparte
+        // ("DINA AWS", id cl.app.dina.aws), así conviven en el teléfono con la versión local.
+        // En Android Studio: Build > Select Build Variant > aws.
+        create("aws") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".aws"
+            versionNameSuffix = "-aws"
+            buildConfigField("String", "API_BASE_URL", "\"http://34.201.191.7:8080/\"")
+            // EC2 todavía no tiene HTTPS
+            manifestPlaceholders["permitirHttp"] = "true"
+            // Las librerías sin variante "aws" usan la de debug
+            matchingFallbacks += listOf("debug")
+        }
         release {
             optimization {
                 enable = false
