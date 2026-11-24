@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cl.app.dina.data.model.Chat
 import cl.app.dina.data.model.EstadoSolicitud
 import cl.app.dina.data.remote.aMensaje
+import cl.app.dina.data.remote.esSinConexion
 import cl.app.dina.data.repository.ChatRepository
 import cl.app.dina.data.repository.SesionRepository
 import java.time.LocalDate
@@ -37,6 +38,8 @@ data class ChatUiState(
     /** Para saber qué mensajes son "Tú:" en la vista previa. */
     val miId: Long = 0,
     val esAdmin: Boolean = false,
+    /** El backend no respondió: [chats] es lo último guardado en el teléfono (banda "Sin conexión"). */
+    val sinConexion: Boolean = false,
     val hoy: LocalDate = LocalDate.now()
 ) {
     /** Cada chat en una sola pestaña. */
@@ -90,30 +93,46 @@ class ChatViewModel(
     private fun cargar(refresco: Boolean, silencioso: Boolean = false) {
         trabajo?.cancel()
         trabajo = viewModelScope.launch {
+            val usuario = sesionRepository.usuario.first()
+            _uiState.update { it.copy(miId = usuario?.id ?: 0, esAdmin = usuario?.esAdmin == true) }
             when {
                 silencioso -> Unit
                 refresco -> _uiState.update { it.copy(refrescando = true) }
-                else -> _uiState.update { it.copy(carga = EstadoCarga.Cargando) }
+                else -> mostrarGuardadosOCargando()
             }
-            val usuario = sesionRepository.usuario.first()
             intentar { chatRepository.chats() }
                 .onSuccess { chats ->
                     _uiState.update {
-                        it.copy(
-                            carga = EstadoCarga.Listo,
-                            chats = chats,
-                            miId = usuario?.id ?: 0,
-                            esAdmin = usuario?.esAdmin == true,
-                            hoy = LocalDate.now()
-                        )
+                        it.copy(carga = EstadoCarga.Listo, chats = chats, sinConexion = false, hoy = LocalDate.now())
                     }
                 }
                 .onFailure { e ->
-                    // Con la lista visible se conserva: el gesto avisa del error, la actualización automática no
-                    if (!refresco) _uiState.update { it.copy(carga = EstadoCarga.Error(e.aMensaje())) }
-                    else if (!silencioso) _mensajes.send(e.aMensaje())
+                    when {
+                        // Sin conexión: se siguen viendo los chats (los visibles o los guardados) con la banda
+                        e.esSinConexion() && mostrarSinConexion() -> Unit
+                        // Con la lista visible se conserva: el gesto avisa del error, la actualización automática no
+                        !refresco -> _uiState.update { it.copy(carga = EstadoCarga.Error(e.aMensaje())) }
+                        !silencioso -> _mensajes.send(e.aMensaje())
+                    }
                 }
             _uiState.update { it.copy(refrescando = false) }
         }
+    }
+
+    /** Primera carga: los chats guardados se muestran al tiro mientras se pregunta al backend. */
+    private suspend fun mostrarGuardadosOCargando() {
+        val guardados = if (_uiState.value.chats.isEmpty()) chatRepository.chatsGuardados() else null
+        _uiState.update {
+            if (guardados != null) it.copy(carga = EstadoCarga.Listo, chats = guardados, refrescando = true)
+            else it.copy(carga = EstadoCarga.Cargando)
+        }
+    }
+
+    /** Deja visibles los chats que ya se ven o, si no hay, los guardados. false si no hay nada que mostrar. */
+    private suspend fun mostrarSinConexion(): Boolean {
+        val visible = _uiState.value.carga == EstadoCarga.Listo
+        val guardados = if (visible) null else chatRepository.chatsGuardados() ?: return false
+        _uiState.update { it.copy(carga = EstadoCarga.Listo, chats = guardados ?: it.chats, sinConexion = true) }
+        return true
     }
 }

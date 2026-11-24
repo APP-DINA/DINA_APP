@@ -11,6 +11,7 @@ import cl.app.dina.soporte.ADMIN
 import cl.app.dina.soporte.ALUMNO
 import cl.app.dina.soporte.ReglaCorrutinas
 import cl.app.dina.soporte.chat
+import cl.app.dina.soporte.errorHttp
 import cl.app.dina.soporte.mensaje
 import cl.app.dina.soporte.solicitud
 import cl.app.dina.ui.viewmodel.AccionChat
@@ -37,6 +38,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -50,6 +52,14 @@ class SolicitudesYChatTest {
     private val sesion = mockk<SesionRepository> { every { usuario } returns this@SolicitudesYChatTest.usuario }
     private val solicitudes = mockk<SolicitudRepository>(relaxed = true)
     private val chats = mockk<ChatRepository>(relaxed = true)
+
+    /** Por defecto no hay nada guardado en el teléfono (cada prueba de "sin conexión" lo cambia). */
+    @Before
+    fun sinNadaGuardado() {
+        coEvery { solicitudes.pendientesGuardadas(any()) } returns null
+        coEvery { chats.chatsGuardados() } returns null
+        coEvery { chats.conversacionGuardada(any()) } returns null
+    }
 
     // Inicio
     @Test
@@ -88,15 +98,63 @@ class SolicitudesYChatTest {
     fun refrescarConErrorConservaLaListaYAvisa() = runTest(regla.dispatcher) {
         coEvery { solicitudes.misPendientes() } returns listOf(solicitud(1))
         val vm = InicioViewModel(sesion, solicitudes)
-        coEvery { solicitudes.misPendientes() } throws IOException()
+        coEvery { solicitudes.misPendientes() } throws errorHttp(500, "{}")
 
         vm.refrescar()
         assertEquals(1, vm.uiState.value.solicitudes.size)
         assertFalse(vm.uiState.value.refrescando)
+        assertFalse(vm.uiState.value.sinConexion) // el backend sí respondió (con error)
         assertTrue(vm.eventos.first() is InicioEvento.Mensaje)
 
         vm.actualizar() // silencioso: ni indicador ni aviso
         assertEquals(EstadoCarga.Listo, vm.uiState.value.cargaSolicitudes)
+    }
+
+    @Test
+    fun sinConexionSeVenLasPendientesGuardadasConLaBanda() = runTest(regla.dispatcher) {
+        coEvery { solicitudes.pendientesGuardadas(false) } returns listOf(solicitud(1), solicitud(2))
+        coEvery { solicitudes.misPendientes() } throws IOException()
+        val vm = InicioViewModel(sesion, solicitudes)
+
+        assertEquals(EstadoCarga.Listo, vm.uiState.value.cargaSolicitudes)
+        assertEquals(2, vm.uiState.value.solicitudes.size)
+        assertTrue(vm.uiState.value.sinConexion)
+        assertFalse(vm.uiState.value.refrescando)
+
+        // Vuelve la conexión: se reemplaza por la lista nueva y se quita la banda
+        coEvery { solicitudes.misPendientes() } returns listOf(solicitud(3))
+        vm.actualizar()
+        assertEquals(listOf(3L), vm.uiState.value.solicitudes.map { it.id })
+        assertFalse(vm.uiState.value.sinConexion)
+    }
+
+    @Test
+    fun sinConexionConLaListaVisibleSoloAparecelaBanda() = runTest(regla.dispatcher) {
+        coEvery { solicitudes.misPendientes() } returns listOf(solicitud(1))
+        val vm = InicioViewModel(sesion, solicitudes)
+        coEvery { solicitudes.misPendientes() } throws IOException()
+
+        vm.refrescar()
+        assertEquals(1, vm.uiState.value.solicitudes.size)
+        assertTrue(vm.uiState.value.sinConexion)
+        assertFalse(vm.uiState.value.refrescando)
+
+        vm.actualizar() // al volver a la pantalla, sigue igual
+        assertEquals(EstadoCarga.Listo, vm.uiState.value.cargaSolicitudes)
+        assertTrue(vm.uiState.value.sinConexion)
+    }
+
+    @Test
+    fun alReintentarSinConexionSeUsaLoGuardadoDelAdmin() = runTest(regla.dispatcher) {
+        usuario.value = ADMIN
+        coEvery { solicitudes.porRevisar() } throws IOException()
+        val vm = InicioViewModel(sesion, solicitudes)
+        assertTrue(vm.uiState.value.cargaSolicitudes is EstadoCarga.Error) // nada guardado todavía
+
+        coEvery { solicitudes.pendientesGuardadas(true) } returns listOf(solicitud(5))
+        vm.reintentar()
+        assertEquals(listOf(5L), vm.uiState.value.solicitudes.map { it.id })
+        assertTrue(vm.uiState.value.sinConexion)
     }
 
     // Detalle de solicitud
@@ -194,12 +252,46 @@ class SolicitudesYChatTest {
         vm.reintentar()
         assertEquals(EstadoCarga.Listo, vm.uiState.value.carga)
 
-        coEvery { chats.chats() } throws IOException()
+        coEvery { chats.chats() } throws errorHttp(500, """{"mensaje":"Error del servidor"}""")
         vm.refrescar()
-        assertEquals("No se pudo conectar con el servidor. Revisa tu conexión", vm.mensajes.first())
+        assertEquals("Error del servidor", vm.mensajes.first())
         assertEquals(1, vm.uiState.value.chats.size) // la lista se conserva
         vm.actualizar()
         assertFalse(vm.uiState.value.refrescando)
+    }
+
+    @Test
+    fun sinConexionSeVenLosChatsGuardadosConLaBanda() = runTest(regla.dispatcher) {
+        coEvery { chats.chatsGuardados() } returns listOf(chat(id = 1), chat(id = 2))
+        coEvery { chats.chats() } throws IOException()
+        val vm = ChatViewModel(sesion, chats)
+
+        assertEquals(EstadoCarga.Listo, vm.uiState.value.carga)
+        assertEquals(2, vm.uiState.value.chats.size)
+        assertTrue(vm.uiState.value.sinConexion)
+        assertEquals(ALUMNO.id, vm.uiState.value.miId)
+
+        // Con la lista visible, un nuevo intento sin conexión la conserva sin avisos
+        vm.refrescar()
+        assertTrue(vm.uiState.value.sinConexion)
+        assertFalse(vm.uiState.value.refrescando)
+
+        coEvery { chats.chats() } returns listOf(chat(id = 1))
+        vm.refrescar()
+        assertFalse(vm.uiState.value.sinConexion)
+        assertEquals(1, vm.uiState.value.chats.size)
+    }
+
+    @Test
+    fun alReintentarSinConexionSeUsanLosChatsGuardados() = runTest(regla.dispatcher) {
+        coEvery { chats.chats() } throws IOException()
+        val vm = ChatViewModel(sesion, chats)
+        assertTrue(vm.uiState.value.carga is EstadoCarga.Error)
+
+        coEvery { chats.chatsGuardados() } returns listOf(chat(id = 7))
+        vm.reintentar()
+        assertEquals(EstadoCarga.Listo, vm.uiState.value.carga)
+        assertTrue(vm.uiState.value.sinConexion)
     }
 
     // Conversación
@@ -289,5 +381,37 @@ class SolicitudesYChatTest {
         coEvery { chats.conversacion(100, 0) } returns Conversacion(chat(), emptyList())
         vm.reintentar()
         assertEquals(EstadoCarga.Listo, vm.uiState.value.carga)
+    }
+
+    @Test
+    fun sinConexionSeLeeLaConversacionGuardada() = runTest(regla.dispatcher) {
+        coEvery { chats.conversacionGuardada(100) } returns Conversacion(chat(), listOf(mensaje(1), mensaje(2)))
+        coEvery { chats.conversacion(100, any()) } throws IOException()
+        val vm = ConversacionViewModel(
+            SavedStateHandle(mapOf(ConversacionViewModel.ARG_SOLICITUD_ID to 100L)), sesion, chats, solicitudes
+        )
+        assertEquals(EstadoCarga.Listo, vm.uiState.value.carga)
+        assertEquals(listOf(1L, 2L), vm.uiState.value.mensajes.map { it.id })
+        assertTrue(vm.uiState.value.sinConexion)
+        assertTrue(vm.uiState.value.soyElSolicitante)
+
+        // Vuelve la conexión: la revisión periódica trae lo nuevo desde el último guardado
+        coEvery { chats.conversacion(100, 2) } returns Conversacion(chat(), listOf(mensaje(3)))
+        vm.reanudar()
+        advanceTimeBy(ConversacionViewModel.INTERVALO_MS + 1)
+        vm.pausar()
+        assertEquals(listOf(1L, 2L, 3L), vm.uiState.value.mensajes.map { it.id })
+        assertFalse(vm.uiState.value.sinConexion)
+    }
+
+    @Test
+    fun laRevisionSinConexionMarcaLaConversacion() = runTest(regla.dispatcher) {
+        val vm = conversacion()
+        coEvery { chats.conversacion(100, 1) } throws IOException()
+        vm.reanudar()
+        advanceTimeBy(ConversacionViewModel.INTERVALO_MS + 1)
+        vm.pausar()
+        assertTrue(vm.uiState.value.sinConexion)
+        assertEquals(listOf(1L), vm.uiState.value.mensajes.map { it.id }) // se siguen viendo
     }
 }

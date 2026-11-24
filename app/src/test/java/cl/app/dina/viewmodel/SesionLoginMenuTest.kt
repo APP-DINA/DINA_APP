@@ -23,6 +23,9 @@ import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -211,5 +214,18 @@ class SesionLoginMenuTest {
             sesion.cerrar()
         }
         assertNotNull(vm)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun sinConexionLaSesionSeCierraIgualSinEsperarAlBackend() = runTest(regla.dispatcher) {
+        // El servidor apagado no responde: la petición quedaría esperando el tiempo límite de OkHttp
+        coEvery { auth.logout() } coAnswers { delay(60_000) }
+        val vm = menu()
+        vm.cerrarSesion()
+        coVerify(exactly = 0) { sesion.cerrar() }
+
+        advanceTimeBy(MenuViewModel.ESPERA_LOGOUT_MS + 1)
+        coVerify(exactly = 1) { sesion.cerrar() }
     }
 }

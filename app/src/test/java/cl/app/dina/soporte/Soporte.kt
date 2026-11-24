@@ -30,6 +30,13 @@ import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 import retrofit2.HttpException
 import retrofit2.Response
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Los ViewModels lanzan corrutinas en viewModelScope (Dispatchers.Main), que no existe en la JVM.
@@ -107,3 +114,18 @@ fun solicitudDto(id: Long = 100, estado: String = "PENDIENTE", fecha: String = "
 /** Error HTTP como lo lanzaría Retrofit, con el cuerpo JSON de dina_backend. */
 fun errorHttp(codigo: Int, json: String): HttpException =
     HttpException(Response.error<Any>(codigo, json.toResponseBody("application/json".toMediaType())))
+
+/**
+ * DataStore en memoria para las pruebas: se comporta igual que el real (lecturas como Flow,
+ * escrituras de a una), pero sin archivo. El de archivo falla en Windows al reemplazar el
+ * archivo en la segunda escritura ("Unable to rename …"), algo que en Android no pasa.
+ */
+class DataStoreEnMemoria : DataStore<Preferences> {
+    private val estado = MutableStateFlow(emptyPreferences())
+    private val escritura = Mutex()
+
+    override val data: Flow<Preferences> = estado
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+        escritura.withLock { transform(estado.value).also { estado.value = it } }
+}

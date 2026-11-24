@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.model.Usuario
 import cl.app.dina.data.remote.aMensaje
+import cl.app.dina.data.remote.esSinConexion
 import cl.app.dina.data.repository.SesionRepository
 import cl.app.dina.data.repository.SolicitudRepository
 import java.time.LocalDate
@@ -25,6 +26,8 @@ data class InicioUiState(
     val cargaSolicitudes: EstadoCarga = EstadoCarga.Cargando,
     val refrescando: Boolean = false,
     val solicitudes: List<SolicitudResumen> = emptyList(),
+    /** El backend no respondió: [solicitudes] es lo último guardado en el teléfono (banda "Sin conexión"). */
+    val sinConexion: Boolean = false,
     val hoy: LocalDate = LocalDate.now()
 ) {
     /**
@@ -103,7 +106,7 @@ class InicioViewModel(
         trabajoSolicitudes?.cancel()
         trabajoSolicitudes = viewModelScope.launch {
             when (modo) {
-                Modo.CARGA -> _uiState.update { it.copy(cargaSolicitudes = EstadoCarga.Cargando) }
+                Modo.CARGA -> mostrarGuardadasOCargando(usuario.esAdmin)
                 Modo.GESTO -> _uiState.update { it.copy(refrescando = true) }
                 Modo.SILENCIOSO -> Unit
             }
@@ -112,19 +115,48 @@ class InicioViewModel(
             }
                 .onSuccess { lista ->
                     _uiState.update {
-                        it.copy(cargaSolicitudes = EstadoCarga.Listo, solicitudes = lista, hoy = LocalDate.now())
+                        it.copy(
+                            cargaSolicitudes = EstadoCarga.Listo,
+                            solicitudes = lista,
+                            sinConexion = false,
+                            hoy = LocalDate.now()
+                        )
                     }
                 }
                 .onFailure { e ->
-                    // Con la lista visible se conserva: el gesto avisa del error, la actualización automática no
-                    when (modo) {
-                        Modo.CARGA -> _uiState.update { it.copy(cargaSolicitudes = EstadoCarga.Error(e.aMensaje())) }
-                        Modo.GESTO -> avisar(e.aMensaje())
-                        Modo.SILENCIOSO -> Unit
+                    when {
+                        // Sin conexión: se sigue mostrando la lista (la visible o la guardada) con la banda
+                        e.esSinConexion() && mostrarSinConexion(usuario.esAdmin) -> Unit
+                        // Con la lista visible se conserva: el gesto avisa del error, la actualización automática no
+                        modo == Modo.CARGA ->
+                            _uiState.update { it.copy(cargaSolicitudes = EstadoCarga.Error(e.aMensaje())) }
+                        modo == Modo.GESTO -> avisar(e.aMensaje())
                     }
                 }
             _uiState.update { it.copy(refrescando = false) }
         }
+    }
+
+    /**
+     * Primera carga: si hay una lista guardada se muestra al tiro (con el indicador de actualizar
+     * arriba) mientras se pregunta al backend; si no, el indicador de carga de siempre.
+     */
+    private suspend fun mostrarGuardadasOCargando(esAdmin: Boolean) {
+        val guardadas = if (_uiState.value.solicitudes.isEmpty()) solicitudRepository.pendientesGuardadas(esAdmin) else null
+        _uiState.update {
+            if (guardadas != null) it.copy(cargaSolicitudes = EstadoCarga.Listo, solicitudes = guardadas, refrescando = true)
+            else it.copy(cargaSolicitudes = EstadoCarga.Cargando)
+        }
+    }
+
+    /** Deja visible la lista que ya se ve o, si no hay, la guardada. false si no hay nada que mostrar. */
+    private suspend fun mostrarSinConexion(esAdmin: Boolean): Boolean {
+        val visible = _uiState.value.cargaSolicitudes == EstadoCarga.Listo
+        val guardadas = if (visible) null else solicitudRepository.pendientesGuardadas(esAdmin) ?: return false
+        _uiState.update {
+            it.copy(cargaSolicitudes = EstadoCarga.Listo, solicitudes = guardadas ?: it.solicitudes, sinConexion = true)
+        }
+        return true
     }
 
     private suspend fun avisar(texto: String) = _eventos.send(InicioEvento.Mensaje(texto))

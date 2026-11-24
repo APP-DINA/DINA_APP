@@ -1,7 +1,6 @@
 package cl.app.dina.repository
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -15,37 +14,23 @@ import cl.app.dina.data.repository.SesionRepository
 import cl.app.dina.data.repository.aModelo
 import cl.app.dina.soporte.ADMIN
 import cl.app.dina.soporte.ALUMNO
+import cl.app.dina.soporte.DataStoreEnMemoria
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import java.io.File
 import java.time.LocalDate
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
-/** Sesión y preferencias (DataStore real en un archivo temporal) y la API externa de feriados. */
+/** Sesión y preferencias (DataStore en memoria) y la API externa de feriados. */
 class RepositoriosLocalesTest {
 
-    @get:Rule
-    val carpeta = TemporaryFolder()
-
-    private val alcance = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    @After
-    fun cerrar() = alcance.cancel()
-
-    private fun dataStore(nombre: String): DataStore<Preferences> =
-        PreferenceDataStoreFactory.create(scope = alcance) { File(carpeta.root, "$nombre.preferences_pb") }
+    /** Un DataStore nuevo por prueba ([nombre] solo describe para qué es). */
+    @Suppress("UNUSED_PARAMETER")
+    private fun dataStore(nombre: String): DataStore<Preferences> = DataStoreEnMemoria()
 
     // Sesión
 
