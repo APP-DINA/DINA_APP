@@ -19,9 +19,13 @@ DINA es una aplicación móvil nativa para Android desarrollada en **Kotlin** co
 ###  Autenticación y Control de Roles
 * **Inicios de Sesión según Dominio:** Identificación automática de rol mediante el correo institucional:
 
-  * `@duocuc.cl`: Estudiantes.
-  * `@profesor.duoc.cl`: Docentes.
-  * **Administrador:** Otorgado desde el backend para gestión completa del sistema.
+   | Correo | Nombre | Rol | Tipo de cuenta | Contraseña |
+   |---|---|---|---|---|
+   | exe.guzman@duocuc.cl | Exequiel Guzman | ADMIN | Estudiante | `duoc1234` |
+   | vict.godoy@duocuc.cl | Victor Godoy | USUARIO | Estudiante | `duoc1234` |
+   | nan.bernal@profesor.duoc.cl | Nancy Beatriz Bernal | USUARIO | Docente | `duoc1234` |
+
+* **Administrador:** Otorgado desde el backend para gestión completa del sistema.
 * **Sesión Persistente:** Almacenamiento seguro de tokens Bearer usando **Jetpack DataStore**.
 * **Gestión de Perfil:** Carga y recorte automático de fotos de perfil a 512px JPEG.
 
@@ -134,7 +138,7 @@ Desplegado en AWS EC2 en `http://34.201.191.7:8080/api`:
    ./gradlew :app:koverHtmlReportDebug
    ```
 
-### 🧪 Evidencia de Pruebas Unitarias y Cobertura (Kover)
+### Evidencia de Pruebas Unitarias y Cobertura (Kover)
 
 | Resultado de Pruebas Unitarias y Cobertura |
 | :---: |
