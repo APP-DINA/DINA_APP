@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Menú: perfil (con foto), opciones de administración, tema y cerrar sesión. */
 class MenuViewModel(
@@ -81,14 +82,21 @@ class MenuViewModel(
     fun cancelarCerrarSesion() { _confirmandoCierre.value = false }
 
     /**
-     * Invalida el token en el backend y borra la sesión del teléfono.
-     * SesionViewModel detecta el cambio y vuelve al Login. El tema elegido se mantiene.
+     * Invalida el token en el backend y borra la sesión del teléfono (y con ella la copia local
+     * de solicitudes y chats). SesionViewModel detecta el cambio y vuelve al Login. El tema se mantiene.
+     *
+     * Sin conexión el backend no responde y la petición esperaría hasta el tiempo límite de OkHttp
+     * (10 s o más): por eso se espera como máximo [ESPERA_LOGOUT_MS] y la sesión se cierra igual.
      */
     fun cerrarSesion() {
         _confirmandoCierre.value = false
         viewModelScope.launch {
-            authRepository.logout()     // si no hay conexión, igual se cierra en el teléfono
+            withTimeoutOrNull(ESPERA_LOGOUT_MS) { authRepository.logout() }
             sesionRepository.cerrar()
         }
+    }
+
+    companion object {
+        const val ESPERA_LOGOUT_MS = 2_000L
     }
 }
