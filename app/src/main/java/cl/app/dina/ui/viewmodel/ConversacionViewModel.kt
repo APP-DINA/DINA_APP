@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cl.app.dina.data.model.Chat
+import cl.app.dina.data.model.Conversacion
 import cl.app.dina.data.model.EstadoSolicitud
 import cl.app.dina.data.model.Mensaje
 import cl.app.dina.data.remote.aMensaje
+import cl.app.dina.data.remote.esSinConexion
 import cl.app.dina.data.repository.ChatRepository
 import cl.app.dina.data.repository.SesionRepository
 import cl.app.dina.data.repository.SolicitudRepository
@@ -44,6 +46,8 @@ data class ConversacionUiState(
     val errorMotivo: String? = null,
     /** Se está cancelando o cerrando. */
     val procesando: Boolean = false,
+    /** El backend no respondió: se ven los mensajes guardados en el teléfono. */
+    val sinConexion: Boolean = false,
     val hoy: LocalDate = LocalDate.now()
 ) {
     private val solicitud get() = chat?.solicitud
@@ -94,25 +98,35 @@ class ConversacionViewModel(
 
     fun reintentar() = cargar()
 
+    /** Muestra al tiro la conversación guardada (si hay) y después la trae completa del backend. */
     private fun cargar() {
         viewModelScope.launch {
-            _uiState.update { it.copy(carga = EstadoCarga.Cargando) }
             val usuario = sesionRepository.usuario.first()
+            _uiState.update { it.copy(miId = usuario?.id ?: 0, esAdmin = usuario?.esAdmin == true) }
+            val guardada = if (_uiState.value.chat == null) chatRepository.conversacionGuardada(solicitudId) else null
+            if (guardada != null) mostrar(guardada) else _uiState.update { it.copy(carga = EstadoCarga.Cargando) }
+
             intentar { chatRepository.conversacion(solicitudId) }
-                .onSuccess { c ->
-                    _uiState.update {
-                        it.copy(
-                            carga = EstadoCarga.Listo,
-                            chat = c.chat,
-                            mensajes = c.mensajes,
-                            miId = usuario?.id ?: 0,
-                            esAdmin = usuario?.esAdmin == true,
-                            hoy = LocalDate.now()
-                        )
+                .onSuccess { c -> mostrar(c, sinConexion = false) }
+                .onFailure { e ->
+                    // Sin conexión, con mensajes guardados a la vista: se pueden seguir leyendo
+                    if (e.esSinConexion() && _uiState.value.carga == EstadoCarga.Listo) {
+                        _uiState.update { it.copy(sinConexion = true) }
+                    } else {
+                        _uiState.update { it.copy(carga = EstadoCarga.Error(e.aMensaje())) }
                     }
                 }
-                .onFailure { e -> _uiState.update { it.copy(carga = EstadoCarga.Error(e.aMensaje())) } }
         }
+    }
+
+    private fun mostrar(c: Conversacion, sinConexion: Boolean = _uiState.value.sinConexion) = _uiState.update {
+        it.copy(
+            carga = EstadoCarga.Listo,
+            chat = c.chat,
+            mensajes = c.mensajes,
+            sinConexion = sinConexion,
+            hoy = LocalDate.now()
+        )
     }
 
     // Mensajes nuevos cada 5 s (solo con la pantalla visible)
@@ -135,7 +149,10 @@ class ConversacionViewModel(
         if (_uiState.value.carga != EstadoCarga.Listo) return
         val ultimo = _uiState.value.mensajes.lastOrNull()?.id ?: 0
         intentar { chatRepository.conversacion(solicitudId, despuesDe = ultimo) }
-            .onSuccess { c -> _uiState.update { it.copy(chat = c.chat, mensajes = it.mensajes.agregar(c.mensajes)) } }
+            .onSuccess { c ->
+                _uiState.update { it.copy(chat = c.chat, mensajes = it.mensajes.agregar(c.mensajes), sinConexion = false) }
+            }
+            .onFailure { e -> if (e.esSinConexion()) _uiState.update { it.copy(sinConexion = true) } }
     }
 
     // Escribir

@@ -1,6 +1,7 @@
 package cl.app.dina.di
 
 import android.content.Context
+import cl.app.dina.data.local.CacheLocal
 import cl.app.dina.data.local.preferenciasDataStore
 import cl.app.dina.data.local.sesionDataStore
 import cl.app.dina.data.remote.DinaApi
@@ -63,9 +64,12 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val espacioRepository: EspacioRepository by lazy { RemoteEspacioRepository(api) }
 
-    override val solicitudRepository: SolicitudRepository by lazy { RemoteSolicitudRepository(api) }
+    /** Copia local para ver solicitudes y chats sin conexión (en el archivo de la sesión: se borra con ella). */
+    private val cache: CacheLocal by lazy { CacheLocal(appContext.sesionDataStore) }
 
-    override val chatRepository: ChatRepository by lazy { RemoteChatRepository(api) }
+    override val solicitudRepository: SolicitudRepository by lazy { RemoteSolicitudRepository(api, cache) }
+
+    override val chatRepository: ChatRepository by lazy { RemoteChatRepository(api, cache) }
 
     override val notificacionRepository: NotificacionRepository by lazy { RemoteNotificacionRepository(api) }
 

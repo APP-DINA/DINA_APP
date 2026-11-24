@@ -5,12 +5,14 @@ import cl.app.dina.data.model.EstadoBloque
 import cl.app.dina.data.model.NuevaSolicitud
 import cl.app.dina.data.model.SolicitudCreada
 import cl.app.dina.data.model.SolicitudResumen
+import cl.app.dina.data.local.CacheLocal
 import cl.app.dina.data.remote.DinaApi
 import cl.app.dina.data.remote.ErrorDelBackend
 import cl.app.dina.data.remote.leerErrorDelBackend
 import cl.app.dina.data.remote.dto.CancelarDto
 import cl.app.dina.data.remote.dto.CrearSolicitudDto
 import cl.app.dina.data.remote.dto.RechazarDto
+import cl.app.dina.data.remote.dto.SolicitudDto
 import cl.app.dina.data.remote.dto.aResumen
 import cl.app.dina.data.remote.dto.hhmm
 import java.time.LocalDate
@@ -33,6 +35,12 @@ interface SolicitudRepository {
     /** Solicitudes propias que esperan respuesta del administrador, de la más cercana a la más lejana. */
     suspend fun misPendientes(): List<SolicitudResumen>
 
+    /**
+     * Sin conexión: la última lista de [porRevisar] ([admin] = true) o de [misPendientes] que se
+     * guardó en el teléfono, o null si nunca se guardó ninguna.
+     */
+    suspend fun pendientesGuardadas(admin: Boolean): List<SolicitudResumen>? = null
+
     /** Una solicitud: la propia, o cualquiera si es ADMIN. */
     suspend fun detalle(id: Long): SolicitudResumen
 
@@ -49,7 +57,11 @@ interface SolicitudRepository {
     suspend fun rechazar(id: Long, motivo: String?): SolicitudResumen
 }
 
-class RemoteSolicitudRepository(private val api: DinaApi) : SolicitudRepository {
+/** [cache]: copia local de las pendientes para mostrarlas sin conexión (null = no se guarda nada). */
+class RemoteSolicitudRepository(
+    private val api: DinaApi,
+    private val cache: CacheLocal? = null
+) : SolicitudRepository {
 
     override suspend fun disponibilidad(espacioId: Long, fecha: LocalDate): List<BloqueDia> =
         api.disponibilidad(espacioId, fecha.toString()).bloques.map {
@@ -83,13 +95,24 @@ class RemoteSolicitudRepository(private val api: DinaApi) : SolicitudRepository 
     }
 
     override suspend fun porRevisar(): List<SolicitudResumen> =
-        api.solicitudesAdmin(estado = PENDIENTE).map { it.aResumen() }
+        api.solicitudesAdmin(estado = PENDIENTE)
+            .also { cache?.guardar(CACHE_POR_REVISAR, it) }
+            .map { it.aResumen() }
 
     override suspend fun misPendientes(): List<SolicitudResumen> =
         api.misSolicitudes()
             .filter { it.estado == PENDIENTE }
-            .map { it.aResumen() }
-            .sortedWith(compareBy({ it.fecha }, { it.inicio }))
+            .also { cache?.guardar(CACHE_MIS_PENDIENTES, it) }
+            .aPendientes()
+
+    override suspend fun pendientesGuardadas(admin: Boolean): List<SolicitudResumen>? {
+        val guardadas = cache?.leer<List<SolicitudDto>>(if (admin) CACHE_POR_REVISAR else CACHE_MIS_PENDIENTES)
+            ?: return null
+        return if (admin) guardadas.map { it.aResumen() } else guardadas.aPendientes()
+    }
+
+    private fun List<SolicitudDto>.aPendientes(): List<SolicitudResumen> =
+        map { it.aResumen() }.sortedWith(compareBy({ it.fecha }, { it.inicio }))
 
     override suspend fun detalle(id: Long) = api.solicitud(id).aResumen()
 
@@ -109,5 +132,7 @@ class RemoteSolicitudRepository(private val api: DinaApi) : SolicitudRepository 
 
     private companion object {
         const val PENDIENTE = "PENDIENTE"
+        const val CACHE_POR_REVISAR = "por_revisar"
+        const val CACHE_MIS_PENDIENTES = "mis_pendientes"
     }
 }

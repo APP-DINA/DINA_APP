@@ -1,6 +1,7 @@
 package cl.app.dina.ui.views
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +47,7 @@ import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Solicitante
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.model.TipoEspacio
+import cl.app.dina.ui.components.BandaSinConexion
 import cl.app.dina.ui.components.CargandoView
 import cl.app.dina.ui.components.FotoPerfil
 import cl.app.dina.ui.components.MensajeView
@@ -112,6 +114,9 @@ private fun ChatContenido(state: ChatUiState, acciones: ChatAcciones, modifier: 
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
+        AnimatedVisibility(visible = state.sinConexion) {
+            BandaSinConexion(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+        }
         PrimaryTabRow(selectedTabIndex = state.pestania.ordinal) {
             PestaniaChat.entries.forEach { pestania ->
                 // Abiertos y Aceptados muestran cuántos hay (los cerrados solo se acumulan)

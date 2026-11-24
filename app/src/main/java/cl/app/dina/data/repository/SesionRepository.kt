@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import cl.app.dina.data.model.Rol
 import cl.app.dina.data.model.Usuario
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /**
@@ -23,7 +24,7 @@ class SesionRepository(private val dataStore: DataStore<Preferences>) {
         val CORREO = stringPreferencesKey("correo")
         val NOMBRE = stringPreferencesKey("nombre")
         val ROL = stringPreferencesKey("rol")
-        val TOKEN = stringPreferencesKey("token")
+        val TOKEN = CLAVE_TOKEN
         val ADMIN = booleanPreferencesKey("admin")
         val FOTO = stringPreferencesKey("foto")
     }
@@ -45,7 +46,7 @@ class SesionRepository(private val dataStore: DataStore<Preferences>) {
             id = prefs[Claves.ID] ?: 0,
             fotoUrl = prefs[Claves.FOTO]
         )
-    }
+    }.distinctUntilChanged() // la copia local (CacheLocal) comparte el archivo: solo avisa si cambió el usuario
 
     /** Token para las peticiones al backend (lo agrega AuthTokenInterceptor). */
     val token: Flow<String?> = dataStore.data.map { it[Claves.TOKEN] }
@@ -77,5 +78,10 @@ class SesionRepository(private val dataStore: DataStore<Preferences>) {
         this[Claves.ROL] = usuario.rol.name
         this[Claves.ADMIN] = usuario.esAdmin
         usuario.fotoUrl?.let { this[Claves.FOTO] = it } ?: remove(Claves.FOTO)
+    }
+
+    companion object {
+        /** También la usa CacheLocal: sin token no guarda nada. */
+        val CLAVE_TOKEN = stringPreferencesKey("token")
     }
 }

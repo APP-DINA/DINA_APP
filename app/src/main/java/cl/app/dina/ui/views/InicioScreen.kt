@@ -41,6 +41,7 @@ import cl.app.dina.data.model.Solicitante
 import cl.app.dina.data.model.SolicitudResumen
 import cl.app.dina.data.model.TipoEspacio
 import cl.app.dina.data.model.Usuario
+import cl.app.dina.ui.components.BandaSinConexion
 import cl.app.dina.ui.components.CargandoView
 import cl.app.dina.ui.components.EncabezadoPerfil
 import cl.app.dina.ui.components.MensajeView
@@ -118,6 +119,16 @@ private fun InicioContenido(state: InicioUiState, acciones: InicioAcciones, modi
         ) {
             item(key = "encabezado") {
                 EncabezadoPerfil(usuario)
+            }
+            if (state.sinConexion) {
+                item(key = "sinConexion") {
+                    BandaSinConexion(
+                        Modifier
+                            .animateItem()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp)
+                    )
+                }
             }
             solicitudesPendientes(state, acciones, paraAdmin = usuario.esAdmin)
         }

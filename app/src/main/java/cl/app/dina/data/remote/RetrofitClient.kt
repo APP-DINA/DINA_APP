@@ -60,6 +60,12 @@ fun Throwable.leerErrorDelBackend(): Throwable {
     return ErrorDelBackend(error?.mensaje ?: "El servidor respondió con un error (${code()})", error?.codigo)
 }
 
+/**
+ * El backend no respondió (sin internet, servidor apagado, tiempo agotado). No incluye las
+ * respuestas con error del backend: esas sí llegaron. Con esto se decide mostrar lo guardado.
+ */
+fun Throwable.esSinConexion(): Boolean = this is IOException
+
 /** Convierte un error de red o del backend en un mensaje para mostrar al usuario. */
 fun Throwable.aMensaje(): String = when (this) {
     is ErrorDelBackend -> message.orEmpty()
